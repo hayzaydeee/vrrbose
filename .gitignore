@@ -34,3 +34,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.claude
+
+docs
+
+# monorepo
+node_modules/
+dist/
+.next/
+*.db
+*.db-shm
+*.db-wal
+pnpm-lock.yaml
