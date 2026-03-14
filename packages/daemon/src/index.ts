@@ -7,6 +7,8 @@ import { SessionManager } from './session/manager.js';
 import { GitWatcher } from './watchers/git.js';
 import { FsWatcher } from './watchers/fs.js';
 import { createApp } from './api/index.js';
+import { McpServer } from './mcp/server.js';
+import { injectContext } from './agent/context-injector.js';
 import { DAEMON_PORT } from '@vrrbose/shared';
 import type { Event } from '@vrrbose/shared';
 
@@ -41,9 +43,22 @@ async function main() {
 
   const projectId = project.id;
 
-  // Session manager
-  const sessionManager = new SessionManager(db, projectId);
+  // Session manager — inject context into CLAUDE.md on session close
+  const sessionManager = new SessionManager(db, projectId, {
+    onSessionClose: (_sessionId) => {
+      injectContext(db, projectId, PROJECT_PATH, { claudeCode: true }).catch(err =>
+        console.error('[inject] context injection failed:', err)
+      );
+    },
+  });
   sessionManager.start();
+
+  // Optional MCP server (set VRRBOSE_MCP=1 to enable)
+  let mcpServer: McpServer | null = null;
+  if (process.env['VRRBOSE_MCP'] === '1') {
+    mcpServer = new McpServer(db, projectId);
+    mcpServer.start();
+  }
 
   // Event handler — attach session ID to events as they arrive
   function onEvent(event: Event) {
@@ -100,6 +115,7 @@ async function main() {
     gitWatcher.stop();
     fsWatcher.stop();
     sessionManager.stop();
+    mcpServer?.stop();
     closeDb();
     process.exit(0);
   }

@@ -1,0 +1,12 @@
+.card { padding: var(--space-3); border-left: 2px solid transparent; cursor: pointer; border-radius: var(--radius); transition: background 0.1s; }
+.card:hover { background: var(--color-surface); }
+.active { border-left-color: var(--color-cta); background: rgba(255,125,0,0.05); }
+.header { display: flex; gap: var(--space-2); align-items: flex-start; margin-bottom: var(--space-1); }
+.index   { font-family: var(--font-code); font-size: var(--text-xs); color: var(--color-text-muted); flex-shrink: 0; padding-top: 2px; }
+.message { font-size: var(--text-sm); line-height: 1.4; }
+.meta { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.stat { font-family: var(--font-code); font-size: var(--text-xs); color: var(--color-text-muted); }
+.dot  { color: var(--color-border); font-size: var(--text-xs); }
+.time { font-family: var(--font-code); font-size: var(--text-xs); color: var(--color-text-muted); }
+.dur  { font-family: var(--font-code); font-size: var(--text-xs); color: var(--color-text-muted); }
+.chips { display: flex; gap: var(--space-1); flex-wrap: wrap; }

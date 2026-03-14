@@ -5,6 +5,11 @@ import type Database from 'better-sqlite3';
 import { insertSession, updateSession, getSessions, getSession } from '../db/client.js';
 import { scoreSession } from './scorer.js';
 
+export interface SessionManagerOptions {
+  idleThresholdHours?: number;
+  onSessionClose?: (sessionId: string) => void;
+}
+
 export class SessionManager {
   private db: Database.Database;
   private projectId: string;
@@ -12,11 +17,13 @@ export class SessionManager {
   private currentSessionId: string | null = null;
   private lastActivityAt: number = Date.now();
   private idleCheckInterval: ReturnType<typeof setInterval> | null = null;
+  private onSessionClose: ((sessionId: string) => void) | undefined;
 
-  constructor(db: Database.Database, projectId: string, idleThresholdHours = SESSION_DEFAULTS.IDLE_THRESHOLD_HOURS) {
+  constructor(db: Database.Database, projectId: string, opts: SessionManagerOptions = {}) {
     this.db = db;
     this.projectId = projectId;
-    this.idleThresholdMs = idleThresholdHours * 60 * 60 * 1000;
+    this.idleThresholdMs = (opts.idleThresholdHours ?? SESSION_DEFAULTS.IDLE_THRESHOLD_HOURS) * 60 * 60 * 1000;
+    this.onSessionClose = opts.onSessionClose;
   }
 
   start(): void {
@@ -102,8 +109,10 @@ export class SessionManager {
       score,
     });
 
-    console.log(`[session] closed ${this.currentSessionId} score=${score.toFixed(1)}`);
+    const closedId = this.currentSessionId;
+    console.log(`[session] closed ${closedId} score=${score.toFixed(1)}`);
     this.currentSessionId = null;
+    this.onSessionClose?.(closedId);
   }
 
   private checkIdle(): void {

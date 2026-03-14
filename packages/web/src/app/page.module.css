@@ -1,0 +1,8 @@
+.layout { display: flex; min-height: 100vh; }
+.main { margin-left: var(--sidebar-width); flex: 1; padding: var(--space-6); }
+.content { max-width: var(--content-max); }
+.heading { font-size: var(--text-xl); font-weight: 600; margin-bottom: var(--space-5); }
+.muted { color: var(--color-text-muted); }
+.displayHeading { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 400; margin-bottom: var(--space-4); }
+.onboarding { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-7); margin-top: var(--space-6); }
+.codeBlock { margin-top: var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-3) var(--space-4); font-family: var(--font-code); font-size: var(--text-sm); }

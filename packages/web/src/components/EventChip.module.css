@@ -1,0 +1,15 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius);
+  font-family: var(--font-code);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.teal      { background: var(--color-border); color: var(--color-bg); }
+.brandy    { background: var(--color-cta-pressed); color: var(--color-text); }
+.tangerine { background: var(--color-cta); color: var(--color-bg); }
+.muted     { color: var(--color-text-muted); border: 1px solid var(--color-border); }
