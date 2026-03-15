@@ -58,7 +58,12 @@ function SessionReplayContent() {
 
         <main className={styles.diffPanel}>
           {active
-            ? <DiffViewer filePath={String(active.payload['hash'] ?? '').slice(0, 8)} additions={0} deletions={0} />
+            ? (() => {
+                const stat = String(active.payload['stat'] ?? '');
+                const adds = parseInt(stat.match(/(\d+) insertion/)?.[1] ?? '0', 10);
+                const dels = parseInt(stat.match(/(\d+) deletion/)?.[1] ?? '0', 10);
+                return <DiffViewer filePath={String(active.payload['message'] ?? '(no message)')} additions={adds} deletions={dels} />;
+              })()
             : <div className={styles.emptyDiff}>Select a chapter to view the diff</div>
           }
         </main>
@@ -68,7 +73,31 @@ function SessionReplayContent() {
           {active && (
             <>
               <EventChip type="git_commit" />
-              <p className={styles.eventMeta}>{String(active.payload['message'] ?? '').slice(0, 80)}</p>
+              <p className={styles.eventMeta}>{String(active.payload['message'] ?? '')}</p>
+              {active.payload['stat'] && (
+                <p className={styles.eventMeta} style={{ marginTop: '0.5rem' }}>{String(active.payload['stat'])}</p>
+              )}
+              {active.payload['author'] && (
+                <p className={styles.eventMeta}>{String(active.payload['author'])}</p>
+              )}
+              <p className={styles.eventMeta} style={{ marginTop: '0.5rem', opacity: 0.5 }}>
+                {String(active.payload['hash'] ?? '').slice(0, 12)}
+              </p>
+              {(() => {
+                const next = commits[activeIdx + 1];
+                const windowStart = active.timestamp;
+                const windowEnd = next?.timestamp ?? (session.endedAt ?? Date.now());
+                const windowEvents = events.filter(e => e.type !== 'git_commit' && e.timestamp >= windowStart && e.timestamp <= windowEnd);
+                return windowEvents.length > 0 ? (
+                  <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem' }}>
+                    {windowEvents.map(e => (
+                      <div key={e.id} style={{ marginBottom: '0.5rem' }}>
+                        <EventChip type={e.type as Parameters<typeof EventChip>[0]['type']} />
+                      </div>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
             </>
           )}
         </aside>
