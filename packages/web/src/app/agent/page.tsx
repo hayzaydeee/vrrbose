@@ -3,15 +3,30 @@ import { useState, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { GlobalNav } from '../../components/GlobalNav';
 import { api, type ProjectStatus } from '../../lib/api';
+import { renderMarkdown } from '../../lib/markdown';
 import styles from './page.module.css';
 
 interface Message { role: 'user' | 'assistant'; content: string; queryType?: string; streaming?: boolean; }
 
-const SUGGESTIONS = [
-  'What did I work on this week?',
-  'Summarise the last session',
-  'What files have I touched most?',
-  'Write my brag sheet',
+const SUGGESTION_GROUPS = [
+  {
+    label: 'Reflect',
+    items: [
+      'What did I work on this week?',
+      'Summarise the last session',
+      'What decisions have I made recently?',
+      'What files have I touched most?',
+    ],
+  },
+  {
+    label: 'Generate',
+    items: [
+      'Write my brag sheet',
+      'Write my weekly digest',
+      'Generate my Q1 performance review',
+      'Write CV bullets from the last month',
+    ],
+  },
 ];
 
 function AgentContent() {
@@ -34,7 +49,6 @@ function AgentContent() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // Fire pre-filled query from dashboard ?q= param
   useEffect(() => {
     const q = searchParams.get('q');
     if (q && !firedRef.current) {
@@ -48,8 +62,6 @@ function AgentContent() {
     setMessages(prev => [...prev, { role: 'user', content: query }]);
     setInput('');
     setLoading(true);
-
-    // Add placeholder assistant message for streaming
     setMessages(prev => [...prev, { role: 'assistant', content: '', streaming: true }]);
 
     cancelRef.current = api.askStream(
@@ -76,12 +88,22 @@ function AgentContent() {
         setMessages(prev => {
           const next = [...prev];
           const last = next[next.length - 1];
-          if (last?.role === 'assistant') next[next.length - 1] = { ...last, content: 'Could not reach the daemon. Is `vrrbose start` running?', streaming: false };
+          if (last?.role === 'assistant') {
+            next[next.length - 1] = {
+              ...last,
+              content: 'Could not reach the daemon. Is `vrrbose start` running?',
+              streaming: false,
+            };
+          }
           return next;
         });
         setLoading(false);
       },
     );
+  }
+
+  function copyMessage(content: string) {
+    navigator.clipboard.writeText(content).catch(() => {});
   }
 
   return (
@@ -92,9 +114,16 @@ function AgentContent() {
           {messages.length === 0 ? (
             <div className={styles.empty}>
               <h2 className={styles.emptyHeading}>Ask about your project</h2>
-              <div className={styles.suggestions}>
-                {SUGGESTIONS.map(s => (
-                  <button key={s} className={styles.pill} onClick={() => submit(s)}>{s}</button>
+              <div className={styles.suggestionGroups}>
+                {SUGGESTION_GROUPS.map(group => (
+                  <div key={group.label} className={styles.suggestionGroup}>
+                    <div className={styles.suggestionGroupLabel}>{group.label}</div>
+                    <div className={styles.suggestions}>
+                      {group.items.map(s => (
+                        <button key={s} className={styles.pill} onClick={() => submit(s)}>{s}</button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -105,10 +134,30 @@ function AgentContent() {
                   {m.role === 'assistant' && m.queryType && (
                     <span className={styles.queryType}>{m.queryType}</span>
                   )}
-                  <pre className={styles.content}>{m.content}</pre>
+                  {m.role === 'user' ? (
+                    <div className={styles.userContent}>{m.content}</div>
+                  ) : m.streaming ? (
+                    <div className={styles.streamingContent}>
+                      <div
+                        className={styles.mdContent}
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }}
+                      />
+                      <span className={styles.cursor} />
+                    </div>
+                  ) : (
+                    <div className={styles.assistantContent}>
+                      <div
+                        className={styles.mdContent}
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }}
+                      />
+                      <div className={styles.messageActions}>
+                        <button className={styles.actionBtn} onClick={() => copyMessage(m.content)}>Copy</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
-              {loading && (
+              {loading && !messages[messages.length - 1]?.content && (
                 <div className={`${styles.message} ${styles.assistant} ${styles.skeleton}`}>
                   <div className={styles.skeletonLine} />
                   <div className={styles.skeletonLine} style={{ width: '70%' }} />
@@ -134,9 +183,15 @@ function AgentContent() {
             </div>
           )}
           <div className={styles.inputRow}>
-            <textarea className={styles.input} placeholder="Ask anything about your project..."
-              value={input} onChange={e => setInput(e.target.value)} rows={2} disabled={loading}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(input); } }} />
+            <textarea
+              className={styles.input}
+              placeholder="Ask anything about your project…"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              rows={2}
+              disabled={loading}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(input); } }}
+            />
             <button className={styles.sendBtn} onClick={() => submit(input)} disabled={loading || !input.trim()}>
               {loading ? '…' : 'Send'}
             </button>
@@ -149,7 +204,7 @@ function AgentContent() {
 
 export default function AgentPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '2rem', color: 'var(--color-text-muted)' }}>Loading...</div>}>
+    <Suspense fallback={<div style={{ padding: '2rem', color: 'var(--color-text-muted)' }}>Loading…</div>}>
       <AgentContent />
     </Suspense>
   );

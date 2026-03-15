@@ -7,6 +7,34 @@ import { api } from '../../lib/api';
 import type { Session } from '@vrrbose/shared';
 import styles from './page.module.css';
 
+function getDateGroup(ts: number): string {
+  const now = Date.now();
+  const DAY = 86400_000;
+  const diff = now - ts;
+  if (diff < DAY) return 'Today';
+  if (diff < 2 * DAY) return 'Yesterday';
+  if (diff < 7 * DAY) return 'This week';
+  if (diff < 30 * DAY) return 'This month';
+  return 'Earlier';
+}
+
+function groupSessions(sessions: Session[]): { label: string; sessions: Session[] }[] {
+  const groups: Map<string, Session[]> = new Map();
+  const order = ['Today', 'Yesterday', 'This week', 'This month', 'Earlier'];
+  for (const s of sessions) {
+    const g = getDateGroup(s.startedAt);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g)!.push(s);
+  }
+  return order.filter(l => groups.has(l)).map(l => ({ label: l, sessions: groups.get(l)! }));
+}
+
+function scoreBadgeClass(score: number): string {
+  if (score >= 80) return styles.scoreGreen;
+  if (score >= 60) return styles.scoreAmber;
+  return styles.scoreRed;
+}
+
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -23,44 +51,79 @@ export default function SessionsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const maxDuration = Math.max(...sessions.map(s => s.endedAt ? s.endedAt - s.startedAt : 0), 1);
+  const grouped = groupSessions(sessions);
+
   return (
     <div className={styles.layout}>
       <GlobalNav />
       <main className={styles.main}>
         <h1 className={styles.heading}>Sessions</h1>
-        {loading && <p className={styles.muted}>Loading...</p>}
+        {loading && <p className={styles.muted}>Loading…</p>}
         {error && <p className={styles.error}>{error}</p>}
         {!loading && !error && sessions.length === 0 && (
-          <p className={styles.muted}>No sessions yet. Start the daemon and make some commits.</p>
+          <div className={styles.empty}>
+            <p className={styles.emptyTitle}>No sessions yet</p>
+            <p className={styles.muted}>Start the daemon and make some commits to begin capturing sessions.</p>
+            <code className={styles.emptyCode}>vrrbose start</code>
+          </div>
         )}
-        <div className={styles.list}>
-          {sessions.map(s => <SessionRow key={s.id} session={s} isActive={s.id === activeSessionId} />)}
-        </div>
+        {grouped.map(group => (
+          <div key={group.label} className={styles.group}>
+            <div className={styles.groupLabel}>{group.label}</div>
+            <div className={styles.groupList}>
+              {group.sessions.map(s => (
+                <SessionRow
+                  key={s.id}
+                  session={s}
+                  isActive={s.id === activeSessionId}
+                  maxDuration={maxDuration}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </main>
     </div>
   );
 }
 
-function SessionRow({ session: s, isActive }: { session: Session; isActive: boolean }) {
+function SessionRow({ session: s, isActive, maxDuration }: { session: Session; isActive: boolean; maxDuration: number }) {
   const date = new Date(s.startedAt);
-  const dur = s.endedAt ? Math.round((s.endedAt - s.startedAt) / 60000) : null;
-  const dateLabel = date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
-  const timeLabel = date.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+  const durMs = s.endedAt ? s.endedAt - s.startedAt : 0;
+  const durMin = durMs ? Math.round(durMs / 60000) : null;
+  const durationPct = durMs ? Math.round((durMs / maxDuration) * 100) : 0;
   const isOrphaned = !s.endedAt && !isActive;
+
   return (
     <div className={styles.row}>
-      <div className={styles.rowHeader}>
-        <span className={styles.dateLabel}>{dateLabel}, {timeLabel}</span>
-        {dur !== null && <span className={styles.dur}>{dur}m</span>}
-        {isActive && <EventChip type="session_open" />}
-        {isOrphaned && <span className={styles.orphaned}>orphaned</span>}
+      <div className={styles.rowMain}>
+        <div className={styles.rowHeader}>
+          <span className={styles.dateLabel}>
+            {date.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          {durMin !== null && <span className={styles.dur}>{durMin}m</span>}
+          {isActive && <EventChip type="session_open" />}
+          {isOrphaned && <span className={styles.orphaned}>orphaned</span>}
+        </div>
+        <div className={styles.rowMeta}>
+          {s.commitCount > 0 && <span>{s.commitCount} commits</span>}
+          {s.fileChurn > 0 && <span>{s.fileChurn} lines</span>}
+        </div>
+        {durationPct > 0 && (
+          <div className={styles.durationTrack}>
+            <div className={styles.durationBar} style={{ width: `${durationPct}%` }} />
+          </div>
+        )}
       </div>
-      <div className={styles.rowMeta}>
-        {s.commitCount > 0 && <span>{s.commitCount} commits</span>}
-        {s.fileChurn > 0 && <span>{s.fileChurn} lines</span>}
-        {s.score !== null && <span>score {s.score.toFixed(0)}</span>}
+      <div className={styles.rowRight}>
+        {s.score !== null && (
+          <span className={`${styles.scoreBadge} ${scoreBadgeClass(s.score)}`}>
+            {s.score.toFixed(0)}
+          </span>
+        )}
+        <Link href={`/sessions/detail?id=${s.id}`} className={styles.link}>Replay →</Link>
       </div>
-      <Link href={`/sessions/detail?id=${s.id}`} className={styles.link}>View replay →</Link>
     </div>
   );
 }
