@@ -1,5 +1,5 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @vrrbose/web build",
+  "buildCommand": "pnpm --filter @vrrbose/shared build && pnpm --filter @vrrbose/web build",
   "outputDirectory": ".next"
 }
