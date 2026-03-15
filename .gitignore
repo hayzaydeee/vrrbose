@@ -47,3 +47,4 @@ dist/
 *.db-shm
 *.db-wal
 pnpm-lock.yaml
+packages/daemon/.env
