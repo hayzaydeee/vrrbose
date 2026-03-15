@@ -1,6 +1,7 @@
 'use client';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
 import { GlobalNav } from '../../../components/GlobalNav';
 import { ChapterCard } from '../../../components/ChapterCard';
 import { DiffViewer } from '../../../components/DiffViewer';
@@ -9,8 +10,9 @@ import { api } from '../../../lib/api';
 import type { Session, Event } from '@vrrbose/shared';
 import styles from './page.module.css';
 
-export default function SessionReplayPage() {
-  const params = useParams<{ id: string }>();
+function SessionReplayContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
   const [session, setSession] = useState<Session | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -18,12 +20,12 @@ export default function SessionReplayPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!params.id) return;
-    api.session(params.id)
+    if (!id) { setLoading(false); setError('No session ID provided'); return; }
+    api.session(id)
       .then(({ session, events }) => { setSession(session); setEvents(events); })
       .catch(e => setError(e instanceof Error ? e.message : 'Failed'))
       .finally(() => setLoading(false));
-  }, [params.id]);
+  }, [id]);
 
   if (loading) return <div className={styles.loading}>Loading...</div>;
   if (error || !session) return <div className={styles.error}>{error ?? 'Not found'}</div>;
@@ -72,5 +74,13 @@ export default function SessionReplayPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+export default function SessionReplayPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '2rem', color: 'var(--color-text-muted)' }}>Loading...</div>}>
+      <SessionReplayContent />
+    </Suspense>
   );
 }

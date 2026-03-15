@@ -48,3 +48,4 @@ dist/
 *.db-wal
 pnpm-lock.yaml
 packages/daemon/.env
+packages/web/out/

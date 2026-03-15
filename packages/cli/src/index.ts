@@ -7,6 +7,7 @@ import { replayCommand } from './commands/replay.js';
 import { initCommand } from './commands/init.js';
 import { startCommand } from './commands/start.js';
 import { stopCommand } from './commands/stop.js';
+import { uiCommand } from './commands/ui.js';
 
 const program = new Command();
 
@@ -27,6 +28,12 @@ program
   .description('Stop the Vrrbose daemon')
   .option('--json', 'Output as JSON')
   .action((opts) => stopCommand(opts));
+
+program
+  .command('ui')
+  .description('Open the Vrrbose web UI in your browser')
+  .option('--json', 'Output URL as JSON')
+  .action((opts) => uiCommand(opts));
 
 program
   .command('init')

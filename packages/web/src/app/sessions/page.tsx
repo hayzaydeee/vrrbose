@@ -60,7 +60,7 @@ function SessionRow({ session: s, isActive }: { session: Session; isActive: bool
         {s.fileChurn > 0 && <span>{s.fileChurn} lines</span>}
         {s.score !== null && <span>score {s.score.toFixed(0)}</span>}
       </div>
-      <Link href={`/sessions/${s.id}`} className={styles.link}>View replay →</Link>
+      <Link href={`/sessions/detail?id=${s.id}`} className={styles.link}>View replay →</Link>
     </div>
   );
 }

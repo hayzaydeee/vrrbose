@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { GlobalNav } from '../../components/GlobalNav';
 import { api } from '../../lib/api';
@@ -14,7 +14,7 @@ const SUGGESTIONS = [
   'Write my brag sheet',
 ];
 
-export default function AgentPage() {
+function AgentContent() {
   const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -94,5 +94,13 @@ export default function AgentPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AgentPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '2rem', color: 'var(--color-text-muted)' }}>Loading...</div>}>
+      <AgentContent />
+    </Suspense>
   );
 }
