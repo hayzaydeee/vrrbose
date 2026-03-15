@@ -14,6 +14,10 @@ const RULES: ClassifyRule[] = [
       /lines (of code|changed|added|removed)/i,
       /commits? (this|last|per|today|week|month)/i,
       /time (spent|working|coding)/i,
+      /files?.*(touch|edit|change|modify|most|frequent)/i,
+      /(touch|edit|change|modify).+files?/i,
+      /most (active|edited|touched|changed|modified)/i,
+      /active (files?|days?|hours?)/i,
     ],
   },
   {
@@ -24,6 +28,9 @@ const RULES: ClassifyRule[] = [
       /show me (what|my|the)/i,
       /history|log|recent|last (session|day|week|month)/i,
       /summarize|summarise|recap|overview/i,
+      /earliest|first (session|commit|event)/i,
+      /tell me about.*(session|commit|day|week)/i,
+      /what('s| is| was) (in |the )?(session|first|last|earliest)/i,
     ],
   },
   {

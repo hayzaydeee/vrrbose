@@ -36,11 +36,13 @@ export class FsWatcher {
     // Also respect .gitignore if it exists
     const gitignorePath = join(this.opts.projectPath, '.gitignore');
 
+    const isWindows = process.platform === 'win32';
     this.watcher = chokidar.watch(this.opts.projectPath, {
       ignored: ignoredPatterns,
       ignoreInitial: true,
       persistent: true,
-      usePolling: false,
+      usePolling: isWindows,
+      ...(isWindows && { interval: 1000 }),
     });
 
     this.watcher

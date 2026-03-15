@@ -48,6 +48,30 @@ export async function assembleContext(
     }
   }
 
+  if (queryType === 'METRICS') {
+    // Hot files
+    const fileSaves = getEvents(db, projectId, { type: 'file_save', limit: 500 });
+    if (fileSaves.length > 0) {
+      const counts = new Map<string, number>();
+      for (const e of fileSaves) {
+        const p = String(e.payload['filePath'] ?? '');
+        if (p) counts.set(p, (counts.get(p) ?? 0) + 1);
+      }
+      const top = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      parts.push('## Most-edited files');
+      for (const [path, n] of top) parts.push(`- ${path}: ${n} saves`);
+    }
+    // Recent commits for metrics
+    const commits = getEvents(db, projectId, { type: 'git_commit', limit: 50 });
+    if (commits.length > 0) {
+      parts.push('## Recent commits');
+      for (const c of commits.slice(0, 10)) {
+        const ts = new Date(c.timestamp).toISOString().slice(0, 10);
+        parts.push(`- [${ts}] ${String(c.payload['message'] ?? '').slice(0, 80)}`);
+      }
+    }
+  }
+
   if (sessionId) {
     const session = getSession(db, sessionId);
     if (session) {

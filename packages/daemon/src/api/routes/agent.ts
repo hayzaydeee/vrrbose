@@ -26,7 +26,7 @@ export function agentRouter(db: Database.Database, projectId: string): Router {
 
       const client = new Anthropic();
       const message = await client.messages.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 1024,
         system: prompt.system,
         messages: [{ role: 'user', content: prompt.user }],
