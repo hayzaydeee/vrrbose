@@ -1,30 +1,6 @@
-'use client';
-import { useState } from 'react';
-import { useSignIn } from '@clerk/nextjs';
 import styles from './page.module.css';
 
 export default function VerifyPage() {
-  const { signIn, isLoaded } = useSignIn();
-  const [resent, setResent] = useState(false);
-  const [resending, setResending] = useState(false);
-
-  async function resend() {
-    if (!isLoaded || resending) return;
-    setResending(true);
-    try {
-      await signIn.prepareFirstFactor({
-        strategy: 'email_link',
-        emailAddressId: signIn.supportedFirstFactors?.find(
-          f => f.strategy === 'email_link'
-        )?.emailAddressId ?? '',
-        redirectUrl: `${window.location.origin}/auth/verify`,
-      });
-      setResent(true);
-    } finally {
-      setResending(false);
-    }
-  }
-
   return (
     <div className={styles.page}>
       <div className={styles.card}>
@@ -43,19 +19,6 @@ export default function VerifyPage() {
         <h1 className={styles.heading}>Check your email.</h1>
         <p className={styles.sub}>
           A magic link is on its way. Link expires in 15 minutes.
-        </p>
-
-        <p className={styles.resendRow}>
-          {resent ? (
-            <span className={styles.resendDone}>Link resent.</span>
-          ) : (
-            <>
-              Didn&apos;t get it?{' '}
-              <button className={styles.resendBtn} onClick={resend} disabled={resending}>
-                {resending ? 'Sending…' : 'Resend link'}
-              </button>
-            </>
-          )}
         </p>
 
         <a href="/auth/login" className={styles.back}>← Back to sign in</a>
