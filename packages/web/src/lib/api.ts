@@ -28,9 +28,21 @@ export interface ProjectStatus {
   activeSession: Session | null;
 }
 
+export interface Capsule {
+  id: string;
+  type: 'merge' | 'tag' | 'weekly' | 'manual';
+  createdAt: number;
+  title: string;
+  summary?: string;
+  branch?: string;
+  tag?: string;
+  fileCount?: number;
+}
+
 export const api = {
   status: () => get<StatusResponse>('/api/status'),
   projects: () => get<ProjectStatus[]>('/api/projects'),
+  capsules: () => get<Capsule[]>('/api/capsules').catch(() => [] as Capsule[]),
   sessions: (limit = 20) => get<Session[]>(`/api/sessions?limit=${limit}`),
   session: (id: string) => get<{ session: Session; events: Event[] }>(`/api/sessions/${id}`),
   events: (params?: { sessionId?: string; type?: string; limit?: number; projectId?: string }) => {
