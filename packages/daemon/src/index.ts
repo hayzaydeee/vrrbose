@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { mkdirSync } from 'node:fs';
-import { getDb, closeDb } from './db/client.js';
+import { getDb, closeDb, getAllProjects } from './db/client.js';
 import { WatcherPool } from './watcher-pool.js';
 import { createApp } from './api/index.js';
 import { McpServer } from './mcp/server.js';
@@ -23,8 +23,14 @@ async function main() {
 
   const pool = new WatcherPool(db, (event) => broadcastFn?.(event));
 
-  // If started with a specific project path (backward compat / direct start), register it
-  if (INITIAL_PROJECT_PATH) {
+  // Restore all previously registered projects from DB
+  const knownProjects = getAllProjects(db);
+  for (const p of knownProjects) {
+    pool.addProject(p.rootPath);
+  }
+
+  // If started with a specific project path not already in DB, register it
+  if (INITIAL_PROJECT_PATH && !knownProjects.some(p => p.rootPath === INITIAL_PROJECT_PATH)) {
     pool.addProject(INITIAL_PROJECT_PATH);
   }
 

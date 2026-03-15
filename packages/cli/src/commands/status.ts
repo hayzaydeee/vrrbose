@@ -37,19 +37,24 @@ export async function statusCommand(opts: { json?: boolean }): Promise<void> {
     console.log(c('Vrrbose daemon', chalk.bold) + c(' running', chalk.green));
     console.log(`  Version  : ${status.version}`);
     console.log(`  Uptime   : ${Math.round(status.uptime / 60000)}m`);
-    console.log(`  Project  : ${status.projectId.slice(0, 8)}`);
-    console.log(`  Events   : ${status.eventCount}`);
-    console.log(`  Sessions : ${status.sessionCount}`);
 
-    if (status.activeSession) {
-      const s = status.activeSession;
-      const dur = Math.round((Date.now() - s.startedAt) / 60000);
-      console.log('\n' + c('Active session', chalk.cyan));
-      console.log(`  Duration : ${dur}m`);
-      console.log(`  Commits  : ${s.commitCount}`);
-      console.log(`  Churn    : ${s.fileChurn} lines`);
+    const projects = status.projects ?? [];
+    if (projects.length === 0) {
+      console.log('\n' + c('No projects watched', chalk.dim) + '  Run ' + c('vrrbose init', chalk.cyan) + ' in a project to start tracking it.');
     } else {
-      console.log('\n' + c('No active session', chalk.dim));
+      for (const p of projects) {
+        console.log('\n' + c(p.projectName, chalk.bold));
+        console.log(`  ID       : ${p.projectId.slice(0, 8)}`);
+        console.log(`  Events   : ${p.eventCount}`);
+        console.log(`  Sessions : ${p.sessionCount}`);
+        if (p.activeSession) {
+          const s = p.activeSession;
+          const dur = Math.round((Date.now() - s.startedAt) / 60000);
+          console.log('  ' + c('● active', chalk.green) + `  ${dur}m  ${s.commitCount} commits  ${s.fileChurn} lines churn`);
+        } else {
+          console.log('  ' + c('○ idle', chalk.dim));
+        }
+      }
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
