@@ -1,6 +1,6 @@
 {
   "name": "vrrbose",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "An agent that watches your code being built",
   "type": "module",
   "bin": {
