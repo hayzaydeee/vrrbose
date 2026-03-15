@@ -1,6 +1,9 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
 import { createServer, type Server as HttpServer } from 'node:http';
+import { existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type Database from 'better-sqlite3';
 import type { Event } from '@vrrbose/shared';
 import { DAEMON_PORT } from '@vrrbose/shared';
@@ -46,6 +49,13 @@ export function createApp(opts: AppOptions): AppInstance {
 
   // Health check
   app.get('/health', (_req, res) => res.json({ ok: true }));
+
+  // Serve bundled web UI at /ui
+  const uiDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui');
+  if (existsSync(uiDir)) {
+    app.use('/ui', express.static(uiDir));
+    app.get('/ui/*', (_req, res) => res.sendFile(join(uiDir, 'index.html')));
+  }
 
   return {
     app,
