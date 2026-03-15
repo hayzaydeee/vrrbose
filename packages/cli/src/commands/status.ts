@@ -56,6 +56,21 @@ export async function statusCommand(opts: { json?: boolean }): Promise<void> {
         }
       }
     }
+
+    const sync = (status as unknown as Record<string, unknown>)['sync'] as { loggedIn: boolean; pendingEvents: number; pendingSessions: number } | undefined;
+    if (sync) {
+      console.log('');
+      if (sync.loggedIn) {
+        const pending = sync.pendingEvents + sync.pendingSessions;
+        if (pending === 0) {
+          console.log('  ' + c('↑ synced', chalk.green));
+        } else {
+          console.log('  ' + c(`↑ ${pending} pending sync`, chalk.yellow));
+        }
+      } else {
+        console.log('  ' + c('↑ not logged in', chalk.dim) + '  Run ' + c('vrrbose login', chalk.cyan) + ' to sync to cloud.');
+      }
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(process.stdout.isTTY ? chalk.red('Error: ') + msg : `Error: ${msg}`);
