@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 
 const VRRBOSE_DIR = join(homedir(), '.vrrbose');
 const ENV_PATH    = join(VRRBOSE_DIR, '.env');
-const APP_URL     = process.env['VRRBOSE_APP_URL'] ?? 'https://app.vrrbose.dev';
+const APP_URL     = process.env['VRRBOSE_APP_URL'] ?? 'https://vrrbose.dev';
 const API_URL     = process.env['VRRBOSE_API_URL'] ?? 'https://api.vrrbose.dev';
 const POLL_MS     = 2000;
 const TIMEOUT_MS  = 5 * 60 * 1000; // 5 minutes
