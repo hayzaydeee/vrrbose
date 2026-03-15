@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { GlobalNav } from '../../components/GlobalNav';
 import { api } from '../../lib/api';
 import styles from './page.module.css';
@@ -14,12 +15,23 @@ const SUGGESTIONS = [
 ];
 
 export default function AgentPage() {
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const firedRef = useRef(false);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // Fire pre-filled query from dashboard ?q= param
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q && !firedRef.current) {
+      firedRef.current = true;
+      submit(q);
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit(query: string) {
     if (!query.trim() || loading) return;

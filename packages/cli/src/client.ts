@@ -13,7 +13,7 @@ async function fetchApi<T>(path: string, opts?: RequestInit): Promise<ApiRespons
 
 export async function getStatus(): Promise<StatusResponse> {
   const result = await fetchApi<StatusResponse>('/api/status');
-  if (!result.ok || !result.data) throw new Error(result.error ?? 'No status data');
+  if (!result.ok || !result.data) throw new Error(result.error ?? 'No status data to show');
   return result.data;
 }
 
