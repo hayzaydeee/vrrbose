@@ -51,7 +51,7 @@ export function createApp(opts: AppOptions): AppInstance {
   app.get('/health', (_req, res) => res.json({ ok: true }));
 
   // Serve bundled web UI at /ui
-  const uiDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'ui');
+  const uiDir = join(dirname(fileURLToPath(import.meta.url)), 'ui');
   if (existsSync(uiDir)) {
     app.use('/ui', express.static(uiDir));
     app.get('/ui/*', (_req, res) => res.sendFile(join(uiDir, 'index.html')));
