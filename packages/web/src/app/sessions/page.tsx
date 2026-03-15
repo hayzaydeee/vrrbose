@@ -9,12 +9,16 @@ import styles from './page.module.css';
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.sessions(50)
-      .then(setSessions)
+    Promise.all([api.sessions(50), api.status()])
+      .then(([s, status]) => {
+        setSessions(s);
+        setActiveSessionId(status.activeSession?.id ?? null);
+      })
       .catch(e => setError(e instanceof Error ? e.message : 'Failed'))
       .finally(() => setLoading(false));
   }, []);
@@ -30,24 +34,26 @@ export default function SessionsPage() {
           <p className={styles.muted}>No sessions yet. Start the daemon and make some commits.</p>
         )}
         <div className={styles.list}>
-          {sessions.map(s => <SessionRow key={s.id} session={s} />)}
+          {sessions.map(s => <SessionRow key={s.id} session={s} isActive={s.id === activeSessionId} />)}
         </div>
       </main>
     </div>
   );
 }
 
-function SessionRow({ session: s }: { session: Session }) {
+function SessionRow({ session: s, isActive }: { session: Session; isActive: boolean }) {
   const date = new Date(s.startedAt);
   const dur = s.endedAt ? Math.round((s.endedAt - s.startedAt) / 60000) : null;
   const dateLabel = date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
   const timeLabel = date.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+  const isOrphaned = !s.endedAt && !isActive;
   return (
     <div className={styles.row}>
       <div className={styles.rowHeader}>
         <span className={styles.dateLabel}>{dateLabel}, {timeLabel}</span>
         {dur !== null && <span className={styles.dur}>{dur}m</span>}
-        {!s.endedAt && <EventChip type="session_open" />}
+        {isActive && <EventChip type="session_open" />}
+        {isOrphaned && <span className={styles.orphaned}>orphaned</span>}
       </div>
       <div className={styles.rowMeta}>
         {s.commitCount > 0 && <span>{s.commitCount} commits</span>}

@@ -72,6 +72,17 @@ export class SessionManager {
 
   private openSession(): void {
     const now = Date.now();
+
+    // Resume most recent unclosed session if it's within the idle threshold
+    const recent = getSessions(this.db, this.projectId, { limit: 1 });
+    const last = recent[0];
+    if (last && !last.endedAt && (now - last.startedAt) < this.idleThresholdMs) {
+      this.currentSessionId = last.id;
+      this.lastActivityAt = now;
+      console.log(`[session] resumed ${last.id}`);
+      return;
+    }
+
     const session: Session = {
       id: uuidv4(),
       projectId: this.projectId,
