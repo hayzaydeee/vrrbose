@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { isDaemonRunning, spawnDaemon } from '../daemon.js';
 
 const DEFAULT_CONFIG_YAML = `# Vrrbose global config
 daemon:
@@ -63,10 +64,29 @@ export async function initCommand(opts: { json?: boolean }): Promise<void> {
     console.log(`Created ${vrrboseMdPath}`);
   }
 
+  // 5. Start daemon if not already running
+  let daemonPid: number | null = null;
+  let daemonError: string | null = null;
+  if (!isDaemonRunning()) {
+    try {
+      daemonPid = spawnDaemon(cwd);
+    } catch (err) {
+      daemonError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
   if (opts.json) {
-    console.log(JSON.stringify({ ok: true, projectName, configPath, vrrboseMdPath }));
+    console.log(JSON.stringify({ ok: true, projectName, configPath, vrrboseMdPath, daemonPid, daemonError }));
   } else {
     console.log(`\nVrrbose initialised for "${projectName}"`);
-    console.log('Run `vrrbose status` after starting the daemon.');
+    if (daemonPid) {
+      console.log(`Daemon started (pid ${daemonPid})`);
+    } else if (daemonError) {
+      console.log(`Note: daemon not started — ${daemonError}`);
+      console.log('Run `vrrbose start` once the daemon is built.');
+    } else {
+      console.log('Daemon already running.');
+    }
+    console.log('Run `vrrbose status` to check.');
   }
 }

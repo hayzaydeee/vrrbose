@@ -4,10 +4,19 @@ import type { ApiResponse, StatusResponse, AgentResponse, Session, Event } from 
 const BASE = `http://localhost:${DAEMON_PORT}`;
 
 async function fetchApi<T>(path: string, opts?: RequestInit): Promise<ApiResponse<T>> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...opts,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('ECONNREFUSED') || msg.includes('fetch failed')) {
+      throw new Error('Daemon not running. Run `vrrbose start` to start it.');
+    }
+    throw err;
+  }
   return res.json() as Promise<ApiResponse<T>>;
 }
 

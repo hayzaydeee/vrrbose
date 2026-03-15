@@ -5,6 +5,8 @@ import { statusCommand } from './commands/status.js';
 import { askCommand } from './commands/ask.js';
 import { replayCommand } from './commands/replay.js';
 import { initCommand } from './commands/init.js';
+import { startCommand } from './commands/start.js';
+import { stopCommand } from './commands/stop.js';
 
 const program = new Command();
 
@@ -12,6 +14,19 @@ program
   .name('vrrbose')
   .description('Developer documentation system — archivist for your code')
   .version(DAEMON_VERSION);
+
+program
+  .command('start')
+  .description('Start the Vrrbose daemon in the background')
+  .option('--path <path>', 'Project path to watch (defaults to cwd)')
+  .option('--json', 'Output as JSON')
+  .action((opts) => startCommand(opts));
+
+program
+  .command('stop')
+  .description('Stop the Vrrbose daemon')
+  .option('--json', 'Output as JSON')
+  .action((opts) => stopCommand(opts));
 
 program
   .command('init')

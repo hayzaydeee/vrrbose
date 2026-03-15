@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { getStatus } from '../client.js';
+import { isDaemonRunning } from '../daemon.js';
 
 function sparkline(values: number[]): string {
   const bars = '▁▂▃▄▅▆▇█';
@@ -9,6 +10,19 @@ function sparkline(values: number[]): string {
 }
 
 export async function statusCommand(opts: { json?: boolean }): Promise<void> {
+  if (!isDaemonRunning()) {
+    if (opts.json) {
+      console.log(JSON.stringify({ ok: false, running: false, error: 'Daemon not running' }));
+    } else {
+      const isTTY = process.stdout.isTTY;
+      const msg = isTTY
+        ? chalk.dim('Daemon not running.') + ' Run ' + chalk.cyan('vrrbose start') + ' to start it.'
+        : 'Daemon not running. Run `vrrbose start` to start it.';
+      console.log(msg);
+    }
+    process.exit(1);
+  }
+
   try {
     const status = await getStatus();
 
