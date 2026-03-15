@@ -90,15 +90,15 @@ function CommitDetail({ event, session, allEvents, index, commits }: {
                 <EventChip type={e.type as Parameters<typeof EventChip>[0]['type']} />
                 <span className={styles.windowEventTime}>{formatTime(e.timestamp)}</span>
               </div>
-              {e.type === 'ai_prompt' && e.payload['prompt'] && (
+              {e.type === 'ai_prompt' && !!e.payload['prompt'] && (
                 <blockquote className={styles.aiPrompt}>{String(e.payload['prompt']).slice(0, 280)}{String(e.payload['prompt']).length > 280 ? '…' : ''}</blockquote>
               )}
               {e.type === 'test_run' && (
                 <div className={styles.testResult}>
-                  {e.payload['passed'] !== undefined && <span className={e.payload['failed'] ? styles.testFail : styles.testPass}>{e.payload['passed'] as number} passed{e.payload['failed'] ? `, ${e.payload['failed'] as number} failed` : ''}</span>}
+                  {e.payload['passed'] !== undefined && <span className={Boolean(e.payload['failed']) ? styles.testFail : styles.testPass}>{e.payload['passed'] as number} passed{Boolean(e.payload['failed']) ? `, ${e.payload['failed'] as number} failed` : ''}</span>}
                 </div>
               )}
-              {e.type === 'terminal_command' && e.payload['command'] && (
+              {e.type === 'terminal_command' && !!e.payload['command'] && (
                 <code className={styles.termCmd}>{String(e.payload['command']).slice(0, 120)}</code>
               )}
             </div>
@@ -217,13 +217,13 @@ function SessionReplayContent() {
               {e.type === 'git_commit' && (
                 <p className={styles.eventMeta}>{String(e.payload['message'] ?? '').slice(0, 60)}</p>
               )}
-              {e.type === 'ai_prompt' && e.payload['prompt'] && (
+              {e.type === 'ai_prompt' && !!e.payload['prompt'] && (
                 <p className={styles.eventMeta}>{String(e.payload['prompt']).slice(0, 80)}…</p>
               )}
               {e.type === 'test_run' && (
                 <p className={styles.eventMeta}>
                   {e.payload['passed'] !== undefined ? `${e.payload['passed'] as number} passed` : ''}
-                  {e.payload['failed'] ? `, ${e.payload['failed'] as number} failed` : ''}
+                  {Boolean(e.payload['failed']) ? `, ${e.payload['failed'] as number} failed` : ''}
                 </p>
               )}
             </div>
