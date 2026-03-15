@@ -113,10 +113,22 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
+export interface ProjectStatus {
+  projectId: string;
+  projectPath: string;
+  projectName: string;
+  activeSession: Session | null;
+  eventCount: number;
+  sessionCount: number;
+}
+
 export interface StatusResponse {
   daemon: 'running';
   version: string;
   uptime: number;
+  // Multi-project list
+  projects: ProjectStatus[];
+  // Backward-compat: first project's data (or empty/null if none registered)
   activeSession: Session | null;
   projectId: string;
   eventCount: number;

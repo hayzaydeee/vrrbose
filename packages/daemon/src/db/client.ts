@@ -160,6 +160,32 @@ export function getProject(db: Database.Database, rootPath: string): Project | n
   };
 }
 
+export function getProjectById(db: Database.Database, id: string): Project | null {
+  const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return {
+    id: row['id'] as string,
+    name: row['name'] as string,
+    type: row['type'] as Project['type'],
+    stack: JSON.parse(row['stack'] as string) as string[],
+    description: row['description'] as string,
+    rootPath: row['root_path'] as string,
+    createdAt: row['created_at'] as number,
+    lastActiveAt: row['last_active_at'] as number,
+  };
+}
+
+export function getAllSessions(
+  db: Database.Database,
+  opts: { limit?: number; offset?: number } = {}
+): Session[] {
+  const rows = db.prepare(`
+    SELECT * FROM sessions
+    ORDER BY started_at DESC LIMIT ? OFFSET ?
+  `).all(opts.limit ?? 20, opts.offset ?? 0) as Record<string, unknown>[];
+  return rows.map(rowToSession);
+}
+
 export function getEventCount(db: Database.Database, projectId: string): number {
   const row = db.prepare('SELECT COUNT(*) as count FROM events WHERE project_id = ?').get(projectId) as { count: number };
   return row.count;

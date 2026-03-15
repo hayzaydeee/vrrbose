@@ -63,18 +63,19 @@ function loadGlobalEnv(): Record<string, string> {
   return env;
 }
 
-export function spawnDaemon(projectPath: string): number {
+export function spawnDaemon(projectPath?: string): number {
   mkdirSync(VRRBOSE_DIR, { recursive: true });
   const { cmd, args } = findDaemonEntry();
   const logFd = openSync(LOG_PATH, 'a');
+  const env: Record<string, string | undefined> = {
+    ...process.env,
+    ...loadGlobalEnv(),
+  };
+  if (projectPath) env['VRRBOSE_PROJECT_PATH'] = projectPath;
   const child = spawn(cmd, args, {
     detached: true,
     stdio: ['ignore', logFd, logFd],
-    env: {
-      ...process.env,
-      ...loadGlobalEnv(),
-      VRRBOSE_PROJECT_PATH: projectPath,
-    },
+    env,
   });
   child.unref();
   if (!child.pid) throw new Error('Failed to spawn daemon process (no pid assigned).');

@@ -1,28 +1,38 @@
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
-import type { Session } from '@vrrbose/shared';
 import { DAEMON_VERSION } from '@vrrbose/shared';
 import { getEventCount, getSessionCount } from '../../db/client.js';
+import type { WatcherPool } from '../../watcher-pool.js';
 
 export function statusRouter(
   db: Database.Database,
-  projectId: string,
+  pool: WatcherPool,
   startTime: number,
-  getActiveSession: () => Session | null
 ): Router {
   const router = Router();
 
   router.get('/', (_req, res) => {
+    const statuses = pool.getStatuses().map(s => ({
+      ...s,
+      eventCount: getEventCount(db, s.projectId),
+      sessionCount: getSessionCount(db, s.projectId),
+    }));
+
+    // Backward-compat: surface first project's fields at the top level
+    const first = statuses[0];
+
     res.json({
       ok: true,
       data: {
         daemon: 'running',
         version: DAEMON_VERSION,
         uptime: Date.now() - startTime,
-        activeSession: getActiveSession(),
-        projectId,
-        eventCount: getEventCount(db, projectId),
-        sessionCount: getSessionCount(db, projectId),
+        projects: statuses,
+        // Backward-compat fields
+        activeSession: first?.activeSession ?? null,
+        projectId: first?.projectId ?? '',
+        eventCount: first?.eventCount ?? 0,
+        sessionCount: first?.sessionCount ?? 0,
       },
     });
   });

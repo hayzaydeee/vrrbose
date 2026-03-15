@@ -2,6 +2,20 @@ import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { isDaemonRunning, spawnDaemon } from '../daemon.js';
+import { registerProject } from '../client.js';
+import { DAEMON_PORT } from '@vrrbose/shared';
+
+async function waitForDaemon(timeoutMs = 10_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`http://localhost:${DAEMON_PORT}/health`);
+      if (res.ok) return true;
+    } catch { /* not ready */ }
+    await new Promise(r => setTimeout(r, 200));
+  }
+  return false;
+}
 
 const DEFAULT_CONFIG_YAML = `# Vrrbose global config
 daemon:
@@ -70,13 +84,25 @@ export async function initCommand(opts: { json?: boolean }): Promise<void> {
   if (!isDaemonRunning()) {
     try {
       daemonPid = spawnDaemon(cwd);
+      await waitForDaemon();
     } catch (err) {
       daemonError = err instanceof Error ? err.message : String(err);
     }
   }
 
+  // 6. Register this project with the daemon
+  let projectId: string | null = null;
+  if (!daemonError) {
+    try {
+      const reg = await registerProject(cwd);
+      projectId = reg.projectId;
+    } catch {
+      // Daemon may not be ready yet — non-fatal
+    }
+  }
+
   if (opts.json) {
-    console.log(JSON.stringify({ ok: true, projectName, configPath, vrrboseMdPath, daemonPid, daemonError }));
+    console.log(JSON.stringify({ ok: true, projectName, configPath, vrrboseMdPath, daemonPid, daemonError, projectId }));
   } else {
     console.log(`\nVrrbose initialised for "${projectName}"`);
     if (daemonPid) {
@@ -87,6 +113,7 @@ export async function initCommand(opts: { json?: boolean }): Promise<void> {
     } else {
       console.log('Daemon already running.');
     }
+    if (projectId) console.log(`Project registered (${projectId.slice(0, 8)})`);
     console.log('Run `vrrbose status` to check.');
   }
 }

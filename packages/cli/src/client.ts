@@ -38,6 +38,15 @@ export async function getSession(id: string): Promise<{ session: Session; events
   return result.data;
 }
 
+export async function registerProject(projectPath: string): Promise<{ projectId: string; projectName: string; created: boolean; projectPath: string }> {
+  const result = await fetchApi<{ projectId: string; projectName: string; created: boolean; projectPath: string }>('/api/projects/register', {
+    method: 'POST',
+    body: JSON.stringify({ path: projectPath }),
+  });
+  if (!result.ok || !result.data) throw new Error(result.error ?? 'Failed to register project');
+  return result.data;
+}
+
 export async function askAgent(query: string, format: 'cli' | 'web' = 'cli'): Promise<AgentResponse> {
   const result = await fetchApi<AgentResponse>('/api/agent', {
     method: 'POST',
