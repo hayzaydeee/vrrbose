@@ -2,8 +2,11 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Session } from '@vrrbose/shared';
 import { SESSION_DEFAULTS } from '@vrrbose/shared';
 import type Database from 'better-sqlite3';
-import { insertSession, updateSession, getSessions, getSession } from '../db/client.js';
+import { insertSession, updateSession, getSessions, getSession, getEvents } from '../db/client.js';
 import { scoreSession } from './scorer.js';
+import Anthropic from '@anthropic-ai/sdk';
+
+const anthropic = new Anthropic();
 
 export interface SessionManagerOptions {
   idleThresholdHours?: number;
@@ -124,6 +127,38 @@ export class SessionManager {
     console.log(`[session] closed ${closedId} score=${score.toFixed(1)}`);
     this.currentSessionId = null;
     this.onSessionClose?.(closedId);
+    this.generateSummaryAsync(closedId, session);
+  }
+
+  private async generateSummaryAsync(sessionId: string, session: Session): Promise<void> {
+    try {
+      const events = getEvents(this.db, session.projectId, { sessionId, limit: 50 });
+      const eventLines = events.slice(0, 20).map(e => {
+        const ts = new Date(e.timestamp).toISOString().slice(0, 16);
+        const detail = e.type === 'git_commit'
+          ? String(e.payload['message'] ?? '')
+          : JSON.stringify(e.payload).slice(0, 60);
+        return `[${ts}] ${e.type}: ${detail}`;
+      }).join('\n');
+
+      const durationMin = Math.round(((session.endedAt ?? Date.now()) - session.startedAt) / 60000);
+      const msg = await anthropic.messages.create({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 150,
+        messages: [{
+          role: 'user',
+          content: `Summarise this dev session in 1-2 sentences. Focus on what was built or changed.\n\nSession: ${durationMin}m, ${session.commitCount} commits, ${session.fileChurn} lines changed.\n\nEvents:\n${eventLines || 'No events recorded.'}`,
+        }],
+      });
+
+      const summary = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null;
+      if (summary) {
+        updateSession(this.db, { id: sessionId, summary });
+        console.log(`[session] summary written for ${sessionId.slice(0, 8)}`);
+      }
+    } catch (err) {
+      console.error('[session] summary generation failed:', err);
+    }
   }
 
   private checkIdle(): void {

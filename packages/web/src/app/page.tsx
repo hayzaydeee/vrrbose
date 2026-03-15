@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [daemonError, setDaemonError] = useState(false);
+  const [activeProjectName, setActiveProjectName] = useState<string>('vrrbose');
   const { setDaemonOnline, setActiveSession } = useAppStore();
 
   useEffect(() => {
@@ -30,6 +31,9 @@ export default function DashboardPage() {
       });
 
     api.sessions(5).then(setSessions).catch(() => {});
+    api.projects().then(ps => {
+      if (ps.length > 0) setActiveProjectName(ps[0].projectName);
+    }).catch(() => {});
   }, [setDaemonOnline, setActiveSession]);
 
   const DAY = 86400_000;
@@ -56,7 +60,7 @@ export default function DashboardPage() {
           {!daemonError && status ? (
             <>
               <div className={styles.projectHeader}>
-                <h1 className={styles.projectName}>vrrbose</h1>
+                <h1 className={styles.projectName}>{activeProjectName}</h1>
                 <StatusBadge
                   status={status.activeSession ? 'capturing' : 'idle'}
                   lastEventAt={status.activeSession?.startedAt}

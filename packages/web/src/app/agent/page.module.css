@@ -15,6 +15,9 @@
 .skeleton { animation: pulse 1.5s ease-in-out infinite; }
 .skeletonLine { height: 14px; background: var(--color-surface); border-radius: var(--radius); margin-bottom: var(--space-2); }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.projectRow { max-width: var(--content-max); margin-bottom: var(--space-2); }
+.projectSelect { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); color: var(--color-text); font-family: var(--font-ui); font-size: var(--text-sm); padding: var(--space-1) var(--space-3); outline: none; cursor: pointer; }
+.projectSelect:focus { border-color: var(--color-cta); }
 .inputArea { border-top: 1px solid var(--color-border); padding: var(--space-4); }
 .inputRow { display: flex; gap: var(--space-3); align-items: flex-end; max-width: var(--content-max); }
 .input { flex: 1; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); color: var(--color-text); font-family: var(--font-ui); font-size: var(--text-base); padding: var(--space-3) var(--space-4); resize: none; outline: none; }

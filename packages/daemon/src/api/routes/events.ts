@@ -10,8 +10,9 @@ export function eventsRouter(db: Database.Database, projectId: string): Router {
     const offset = parseInt(req.query['offset'] as string ?? '0', 10);
     const sessionId = req.query['sessionId'] as string | undefined;
     const type = req.query['type'] as string | undefined;
+    const effectiveProjectId = (req.query['projectId'] as string) || projectId;
 
-    const events = getEvents(db, projectId, {
+    const events = getEvents(db, effectiveProjectId, {
       limit,
       offset,
       ...(sessionId !== undefined && { sessionId }),

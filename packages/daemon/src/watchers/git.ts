@@ -42,7 +42,7 @@ export class GitWatcher {
 
   private exec(cmd: string): string {
     try {
-      return execSync(cmd, { cwd: this.opts.projectPath, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+      return execSync(cmd, { cwd: this.opts.projectPath, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true }).trim();
     } catch {
       return '';
     }
@@ -65,7 +65,7 @@ export class GitWatcher {
       // New commit since last poll
       const log = this.exec(`git log --format="%H|%s|%ae|%at" -1`);
       const [commitHash, message, author, tsStr] = log.split('|');
-      const stat = this.exec('git diff --stat HEAD~1 HEAD 2>/dev/null || echo ""');
+      const stat = this.exec('git diff --stat HEAD~1 HEAD');
 
       const event: Event = {
         id: uuidv4(),

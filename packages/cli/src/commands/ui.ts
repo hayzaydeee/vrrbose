@@ -26,5 +26,5 @@ export async function uiCommand(opts: { json?: boolean }): Promise<void> {
   const opener = process.platform === 'win32' ? 'cmd' :
     process.platform === 'darwin' ? 'open' : 'xdg-open';
   const args = process.platform === 'win32' ? ['/c', 'start', url] : [url];
-  spawn(opener, args, { detached: true, stdio: 'ignore' }).unref();
+  spawn(opener, args, { detached: true, stdio: 'ignore', windowsHide: true }).unref();
 }

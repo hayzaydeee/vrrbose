@@ -86,6 +86,7 @@ export function spawnDaemon(projectPath?: string): number {
     detached: true,
     stdio: ['ignore', logFd, logFd],
     env,
+    windowsHide: true,
   });
   child.unref();
   if (!child.pid) throw new Error('Failed to spawn daemon process (no pid assigned).');
@@ -96,7 +97,7 @@ export function spawnDaemon(projectPath?: string): number {
 export function killDaemon(pid: number): void {
   try {
     if (process.platform === 'win32') {
-      execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' });
+      execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore', windowsHide: true });
     } else {
       process.kill(pid, 'SIGTERM');
     }

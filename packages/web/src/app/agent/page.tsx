@@ -2,10 +2,10 @@
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { GlobalNav } from '../../components/GlobalNav';
-import { api } from '../../lib/api';
+import { api, type ProjectStatus } from '../../lib/api';
 import styles from './page.module.css';
 
-interface Message { role: 'user' | 'assistant'; content: string; queryType?: string; }
+interface Message { role: 'user' | 'assistant'; content: string; queryType?: string; streaming?: boolean; }
 
 const SUGGESTIONS = [
   'What did I work on this week?',
@@ -19,8 +19,18 @@ function AgentContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState<ProjectStatus[]>([]);
+  const [projectId, setProjectId] = useState<string>('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const firedRef = useRef(false);
+  const cancelRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    api.projects().then(ps => {
+      setProjects(ps);
+      if (ps.length > 0 && !projectId) setProjectId(ps[0].projectId);
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -33,19 +43,45 @@ function AgentContent() {
     }
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function submit(query: string) {
+  function submit(query: string) {
     if (!query.trim() || loading) return;
     setMessages(prev => [...prev, { role: 'user', content: query }]);
     setInput('');
     setLoading(true);
-    try {
-      const res = await api.ask(query);
-      setMessages(prev => [...prev, { role: 'assistant', content: res.answer, queryType: res.queryType }]);
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Could not reach the daemon. Is `vrrbose start` running?' }]);
-    } finally {
-      setLoading(false);
-    }
+
+    // Add placeholder assistant message for streaming
+    setMessages(prev => [...prev, { role: 'assistant', content: '', streaming: true }]);
+
+    cancelRef.current = api.askStream(
+      query,
+      projectId || undefined,
+      (chunk) => {
+        setMessages(prev => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === 'assistant') next[next.length - 1] = { ...last, content: last.content + chunk };
+          return next;
+        });
+      },
+      (queryType) => {
+        setMessages(prev => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === 'assistant') next[next.length - 1] = { ...last, streaming: false, queryType };
+          return next;
+        });
+        setLoading(false);
+      },
+      (_err) => {
+        setMessages(prev => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === 'assistant') next[next.length - 1] = { ...last, content: 'Could not reach the daemon. Is `vrrbose start` running?', streaming: false };
+          return next;
+        });
+        setLoading(false);
+      },
+    );
   }
 
   return (
@@ -83,12 +119,26 @@ function AgentContent() {
           )}
         </div>
         <div className={styles.inputArea}>
+          {projects.length > 1 && (
+            <div className={styles.projectRow}>
+              <select
+                className={styles.projectSelect}
+                value={projectId}
+                onChange={e => setProjectId(e.target.value)}
+                disabled={loading}
+              >
+                {projects.map(p => (
+                  <option key={p.projectId} value={p.projectId}>{p.projectName}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className={styles.inputRow}>
             <textarea className={styles.input} placeholder="Ask anything about your project..."
               value={input} onChange={e => setInput(e.target.value)} rows={2} disabled={loading}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(input); } }} />
             <button className={styles.sendBtn} onClick={() => submit(input)} disabled={loading || !input.trim()}>
-              Send
+              {loading ? '…' : 'Send'}
             </button>
           </div>
         </div>
