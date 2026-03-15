@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Event, Session, FileSummary, Capsule, Project } from '@vrrbose/shared';
@@ -17,7 +17,11 @@ export function getDb(dbPath: string): Database.Database {
   db.pragma('synchronous = NORMAL');
   db.pragma('busy_timeout = 5000');
 
-  const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf8');
+  // Look for schema.sql next to the current file (tsc build) or one level up (esbuild bundle)
+  const schemaSibling = join(__dirname, 'schema.sql');
+  const schemaParent = join(__dirname, '..', 'schema.sql');
+  const schemaPath = existsSync(schemaSibling) ? schemaSibling : schemaParent;
+  const schema = readFileSync(schemaPath, 'utf8');
   db.exec(schema);
 
   return db;

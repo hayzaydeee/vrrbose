@@ -47,9 +47,12 @@ export function createApp(opts: AppOptions): AppInstance {
   app.use('/api/agent', agentRouter(opts.db, opts.defaultProjectId));
   app.use('/api/projects', projectsRouter(opts.db, opts.pool));
 
-  // Serve web UI static export at /ui if built
+  // Serve web UI static export at /ui if built.
+  // Check both monorepo path (packages/web/out) and published package path (dist/ui).
   const __dirname = fileURLToPath(new URL('.', import.meta.url));
-  const webOutDir = join(__dirname, '..', '..', '..', 'web', 'out');
+  const webOutMonorepo = join(__dirname, '..', '..', '..', 'web', 'out');
+  const webOutPublished = join(__dirname, '..', 'ui'); // dist/daemon/../ui = dist/ui
+  const webOutDir = existsSync(webOutMonorepo) ? webOutMonorepo : webOutPublished;
   if (existsSync(webOutDir)) {
     app.use('/ui', express.static(webOutDir));
     // SPA fallback: serve index.html for any /ui/* path not matched by a file

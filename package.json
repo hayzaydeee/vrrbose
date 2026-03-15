@@ -1,18 +1,43 @@
 {
   "name": "vrrbose",
-  "private": true,
   "version": "0.1.0",
   "description": "An agent that watches your code being built",
+  "type": "module",
+  "bin": {
+    "vrrbose": "./dist/cli.cjs"
+  },
+  "files": [
+    "dist/"
+  ],
   "packageManager": "pnpm@9.0.0",
-"scripts": {
+  "scripts": {
     "build": "pnpm -r build",
+    "bundle": "pnpm -r build && node scripts/bundle.mjs",
     "dev": "pnpm -r --parallel dev",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean && node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "better-sqlite3": "^11.10.0",
+    "chalk": "^5.3.0",
+    "chokidar": "^3.6.0",
+    "commander": "^12.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.0",
+    "ora": "^8.0.0",
+    "socket.io": "^4.7.0",
+    "uuid": "^9.0.0",
+    "yaml": "^2.4.0",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.27.4",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

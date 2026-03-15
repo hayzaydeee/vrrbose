@@ -1,6 +1,6 @@
 import { spawn, execSync } from 'node:child_process';
 import { openSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { createRequire } from 'node:module';
 
@@ -30,6 +30,7 @@ export function isDaemonRunning(): boolean {
 }
 
 function findDaemonEntry(): { cmd: string; args: string[] } {
+  // 1. Explicit override (dev / CI)
   const override = process.env['VRRBOSE_DAEMON_SCRIPT'];
   if (override) {
     return override.endsWith('.ts')
@@ -37,12 +38,21 @@ function findDaemonEntry(): { cmd: string; args: string[] } {
       : { cmd: process.execPath, args: [override] };
   }
 
+  // 2. Published package layout: cli.cjs and daemon.cjs are siblings in the same dir.
+  //    process.argv[1] is the running CLI script — works in both ESM and CJS bundles.
+  const scriptDir = dirname(process.argv[1] ?? '');
+  const siblingDaemon = join(scriptDir, 'daemon.cjs');
+  if (existsSync(siblingDaemon)) {
+    return { cmd: process.execPath, args: [siblingDaemon] };
+  }
+
+  // 3. Monorepo workspace: resolve @vrrbose/daemon main field
   const req = createRequire(import.meta.url);
   let resolved: string;
   try {
     resolved = req.resolve('@vrrbose/daemon');
   } catch {
-    throw new Error('Cannot find @vrrbose/daemon. Run `pnpm build --filter @vrrbose/daemon` first.');
+    throw new Error('Cannot find daemon entry. Run `pnpm build --filter @vrrbose/daemon` first.');
   }
 
   if (!existsSync(resolved)) {
