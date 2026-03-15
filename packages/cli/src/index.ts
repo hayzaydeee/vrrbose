@@ -8,6 +8,7 @@ import { initCommand } from './commands/init.js';
 import { startCommand } from './commands/start.js';
 import { stopCommand } from './commands/stop.js';
 import { uiCommand } from './commands/ui.js';
+import { loginCommand } from './commands/login.js';
 
 const program = new Command();
 
@@ -15,6 +16,12 @@ program
   .name('vrrbose')
   .description('Developer documentation system — archivist for your code')
   .version(DAEMON_VERSION);
+
+program
+  .command('login')
+  .description('Sign in to your Vrrbose account')
+  .option('--json', 'Output as JSON')
+  .action((opts) => loginCommand(opts));
 
 program
   .command('start')
