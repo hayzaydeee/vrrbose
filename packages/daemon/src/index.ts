@@ -5,6 +5,7 @@ import { getDb, closeDb, getAllProjects } from './db/client.js';
 import { WatcherPool } from './watcher-pool.js';
 import { createApp } from './api/index.js';
 import { McpServer } from './mcp/server.js';
+import { startSyncWorker } from './sync/worker.js';
 import { DAEMON_PORT } from '@vrrbose/shared';
 
 const INITIAL_PROJECT_PATH = process.env['VRRBOSE_PROJECT_PATH'];
@@ -55,6 +56,8 @@ async function main() {
 
   broadcastFn = app.broadcast;
 
+  const stopSync = startSyncWorker(db);
+
   await app.listen(PORT);
   console.log(`[daemon] listening on http://localhost:${PORT}`);
 
@@ -64,6 +67,7 @@ async function main() {
 
   function shutdown() {
     console.log('\n[daemon] shutting down...');
+    stopSync();
     pool.stopAll();
     mcpServer?.stop();
     closeDb();

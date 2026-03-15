@@ -236,3 +236,17 @@ export function markEventsSynced(db: Database.Database, ids: string[]): void {
   const placeholders = ids.map(() => '?').join(',');
   db.prepare(`UPDATE events SET sync_status = 'synced' WHERE id IN (${placeholders})`).run(...ids);
 }
+
+export function getPendingSyncSessions(db: Database.Database, limit = 100): Session[] {
+  const rows = db.prepare(`
+    SELECT * FROM sessions WHERE sync_status = 'pending' AND ended_at IS NOT NULL
+    ORDER BY started_at ASC LIMIT ?
+  `).all(limit) as Record<string, unknown>[];
+  return rows.map(rowToSession);
+}
+
+export function markSessionsSynced(db: Database.Database, ids: string[]): void {
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => '?').join(',');
+  db.prepare(`UPDATE sessions SET sync_status = 'synced' WHERE id IN (${placeholders})`).run(...ids);
+}
