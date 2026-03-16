@@ -49,3 +49,4 @@ dist/
 pnpm-lock.yaml
 packages/daemon/.env
 packages/web/out/
+.gstack/
