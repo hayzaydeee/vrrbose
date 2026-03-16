@@ -12,6 +12,7 @@ import { eventsRouter } from './routes/events.js';
 import { statusRouter } from './routes/status.js';
 import { agentRouter } from './routes/agent.js';
 import { projectsRouter } from './routes/projects.js';
+import { capsulesRouter } from './routes/capsules.js';
 import { createSocketServer, broadcastEvent } from './socket.js';
 import type { Server as SocketServer } from 'socket.io';
 import type { WatcherPool } from '../watcher-pool.js';
@@ -46,6 +47,7 @@ export function createApp(opts: AppOptions): AppInstance {
   app.use('/api/events', eventsRouter(opts.db, opts.defaultProjectId));
   app.use('/api/agent', agentRouter(opts.db, opts.defaultProjectId));
   app.use('/api/projects', projectsRouter(opts.db, opts.pool));
+  app.use('/api/capsules', capsulesRouter(opts.db, opts.defaultProjectId));
 
   // Health check
   app.get('/health', (_req, res) => res.json({ ok: true }));

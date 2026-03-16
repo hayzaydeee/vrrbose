@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
-import { getSessions, getAllSessions, getSession, getEvents } from '../../db/client.js';
+import { getSessions, getAllSessions, getSession, getEvents, getCapsules } from '../../db/client.js';
 import type { WatcherPool } from '../../watcher-pool.js';
 
 export function sessionsRouter(db: Database.Database, pool: WatcherPool): Router {
@@ -26,7 +26,8 @@ export function sessionsRouter(db: Database.Database, pool: WatcherPool): Router
     }
 
     const events = getEvents(db, session.projectId, { sessionId: req.params['id'], limit: 500 });
-    res.json({ ok: true, data: { session, events } });
+    const capsules = getCapsules(db, session.projectId, { sessionId: req.params['id'], limit: 100 });
+    res.json({ ok: true, data: { session, events, capsules } });
   });
 
   return router;

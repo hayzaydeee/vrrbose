@@ -35,5 +35,22 @@ export function projectsRouter(db: Database.Database, pool: WatcherPool): Router
     res.json({ ok: true, data: { removed, projectPath } });
   });
 
+  router.post('/:projectId/capsules/manual', (req, res) => {
+    const projectId = req.params['projectId'];
+    if (!projectId) {
+      res.status(400).json({ ok: false, error: 'projectId is required' });
+      return;
+    }
+
+    const { title } = req.body as { title?: string };
+    const triggered = pool.triggerManualCapsule(projectId, title);
+    if (!triggered) {
+      res.status(404).json({ ok: false, error: 'project is not registered' });
+      return;
+    }
+
+    res.json({ ok: true, data: { projectId, trigger: 'manual', title: title ?? null } });
+  });
+
   return router;
 }

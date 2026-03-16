@@ -44,6 +44,7 @@ export class SessionManager {
   private idleThresholdMs: number;
   private currentSessionId: string | null = null;
   private lastActivityAt: number = Date.now();
+  private lastMetricActivityAt: number | null = null;
   private idleCheckInterval: ReturnType<typeof setInterval> | null = null;
   private onSessionClose: ((sessionId: string) => void) | undefined;
 
@@ -68,8 +69,20 @@ export class SessionManager {
     this.closeCurrentSession();
   }
 
-  recordActivity(): void {
-    this.lastActivityAt = Date.now();
+  recordActivity(atMs: number = Date.now()): void {
+    this.lastActivityAt = atMs;
+
+    // Convert observed activity cadence into active-time accrual while capping idle gaps.
+    if (this.currentSessionId) {
+      if (this.lastMetricActivityAt !== null) {
+        const deltaMs = atMs - this.lastMetricActivityAt;
+        if (deltaMs > 0 && deltaMs <= 5 * 60_000) {
+          this.updateSessionMetrics({ activeTimeMs: deltaMs });
+        }
+      }
+      this.lastMetricActivityAt = atMs;
+    }
+
     if (!this.currentSessionId) {
       this.openSession();
     }
@@ -107,6 +120,7 @@ export class SessionManager {
     if (last && !last.endedAt && (now - last.startedAt) < this.idleThresholdMs) {
       this.currentSessionId = last.id;
       this.lastActivityAt = now;
+      this.lastMetricActivityAt = now;
       console.log(`[session] resumed ${last.id}`);
       return;
     }
@@ -127,6 +141,7 @@ export class SessionManager {
     insertSession(this.db, session);
     this.currentSessionId = session.id;
     this.lastActivityAt = now;
+    this.lastMetricActivityAt = now;
     console.log(`[session] opened ${session.id}`);
   }
 
@@ -136,10 +151,18 @@ export class SessionManager {
     const session = getSession(this.db, this.currentSessionId);
     if (!session) return;
 
+    const sessionEvents = getEvents(this.db, session.projectId, { sessionId: this.currentSessionId, limit: 1000 });
+    const terminalCommandCount = sessionEvents.filter((e) => e.type === 'terminal_command').length;
+    const testRunCount = sessionEvents.filter((e) => e.type === 'test_run').length;
+    const aiPromptCount = sessionEvents.filter((e) => e.type === 'ai_prompt').length;
+
     const score = scoreSession({
       commitCount: session.commitCount,
       activeTimeMs: session.activeTimeMs,
       fileChurn: session.fileChurn,
+      terminalCommandCount,
+      testRunCount,
+      aiPromptCount,
     });
 
     updateSession(this.db, {
@@ -151,6 +174,7 @@ export class SessionManager {
     const closedId = this.currentSessionId;
     console.log(`[session] closed ${closedId} score=${score.toFixed(1)}`);
     this.currentSessionId = null;
+    this.lastMetricActivityAt = null;
     this.onSessionClose?.(closedId);
     this.generateSummaryAsync(closedId, session);
   }

@@ -31,7 +31,7 @@ export function statusRouter(
   pool: WatcherPool,
   startTime: number,
 ): Router {
-  const syncConfig = loadSyncWorkerConfig();
+  const syncConfig = loadSyncWorkerConfig(process.env['VRRBOSE_PROJECT_PATH']);
   const router = Router();
 
   router.get('/', (_req, res) => {

@@ -251,6 +251,63 @@ export function markSessionsSynced(db: Database.Database, ids: string[]): void {
   db.prepare(`UPDATE sessions SET sync_status = 'synced' WHERE id IN (${placeholders})`).run(...ids);
 }
 
+export function insertCapsule(db: Database.Database, capsule: Capsule): void {
+  db.prepare(`
+    INSERT OR IGNORE INTO capsules
+      (id, project_id, session_id, title, summary, key_files, decisions, open_questions, created_at, trigger, sync_status)
+    VALUES
+      (@id, @projectId, @sessionId, @title, @summary, @keyFiles, @decisions, @openQuestions, @createdAt, @trigger, @syncStatus)
+  `).run({
+    ...capsule,
+    keyFiles: JSON.stringify(capsule.keyFiles),
+    decisions: JSON.stringify(capsule.decisions),
+    openQuestions: JSON.stringify(capsule.openQuestions),
+  });
+}
+
+export function getCapsules(
+  db: Database.Database,
+  projectId: string,
+  opts: { limit?: number; offset?: number; sessionId?: string } = {},
+): Capsule[] {
+  const conditions = ['project_id = @projectId'];
+  const params: Record<string, unknown> = { projectId };
+
+  if (opts.sessionId) {
+    conditions.push('session_id = @sessionId');
+    params['sessionId'] = opts.sessionId;
+  }
+
+  const rows = db.prepare(`
+    SELECT * FROM capsules WHERE ${conditions.join(' AND ')}
+    ORDER BY created_at DESC LIMIT @limit OFFSET @offset
+  `).all({ ...params, limit: opts.limit ?? 20, offset: opts.offset ?? 0 }) as Record<string, unknown>[];
+
+  return rows.map(rowToCapsule);
+}
+
+export function getCapsule(db: Database.Database, id: string): Capsule | null {
+  const row = db.prepare('SELECT * FROM capsules WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return rowToCapsule(row);
+}
+
+function rowToCapsule(row: Record<string, unknown>): Capsule {
+  return {
+    id: row['id'] as string,
+    projectId: row['project_id'] as string,
+    sessionId: row['session_id'] as string | null,
+    title: row['title'] as string,
+    summary: row['summary'] as string,
+    keyFiles: JSON.parse(row['key_files'] as string) as string[],
+    decisions: JSON.parse(row['decisions'] as string) as string[],
+    openQuestions: JSON.parse(row['open_questions'] as string) as string[],
+    createdAt: row['created_at'] as number,
+    trigger: row['trigger'] as Capsule['trigger'],
+    syncStatus: row['sync_status'] as Capsule['syncStatus'],
+  };
+}
+
 export function getSyncState(db: Database.Database, key: string): string | null {
   const row = db.prepare('SELECT value FROM sync_state WHERE key = ?').get(key) as { value: string } | undefined;
   return row?.value ?? null;

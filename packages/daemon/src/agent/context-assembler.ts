@@ -96,9 +96,24 @@ function summarisePayload(type: string, payload: Record<string, unknown>): strin
   switch (type) {
     case 'git_commit': return String(payload['message'] ?? '').slice(0, 80);
     case 'git_branch_create': return `${payload['from']} → ${payload['to']}`;
+    case 'git_merge': return String(payload['mergeCommit'] ?? payload['from'] ?? 'merge');
+    case 'git_tag': return String(payload['tag'] ?? 'tag created');
+    case 'git_staged_diff': {
+      const files = Array.isArray(payload['files']) ? payload['files'] as unknown[] : [];
+      const insertions = Number(payload['insertions'] ?? 0);
+      const deletions = Number(payload['deletions'] ?? 0);
+      return `${files.length} staged file(s), +${insertions}/-${deletions}`;
+    }
     case 'file_save':
     case 'file_create':
     case 'file_delete': return String(payload['filePath'] ?? '');
+    case 'terminal_command': return String(payload['command'] ?? '').slice(0, 100);
+    case 'test_run':
+      return `${String(payload['runner'] ?? 'test')}: ${String(payload['command'] ?? '').slice(0, 80)}`;
+    case 'ai_prompt':
+      return String(payload['prompt'] ?? payload['message'] ?? '').slice(0, 100);
+    case 'capsule_create':
+      return `${String(payload['trigger'] ?? 'manual')} | ${String(payload['title'] ?? 'capsule')}`;
     default: return JSON.stringify(payload).slice(0, 60);
   }
 }

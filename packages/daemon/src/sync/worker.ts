@@ -14,7 +14,7 @@ import {
 import { loadSyncWorkerConfig } from '../config/sync.js';
 
 const ENV_PATH   = join(homedir(), '.vrrbose', '.env');
-const SYNC_CONFIG = loadSyncWorkerConfig();
+const SYNC_CONFIG = loadSyncWorkerConfig(process.env['VRRBOSE_PROJECT_PATH']);
 
 type SyncState = {
   consecutiveFailures: number;

@@ -1,4 +1,5 @@
 import { DAEMON_PORT } from '@vrrbose/shared';
+import { getConfigValue, loadMergedConfig } from './source.js';
 
 export interface RuntimeConfig {
   port: number;
@@ -18,9 +19,18 @@ function parsePort(value: string | undefined): number {
 
 export function loadRuntimeConfig(): RuntimeConfig {
   const rawProjectPath = process.env['VRRBOSE_PROJECT_PATH']?.trim();
+  const projectPath = rawProjectPath && rawProjectPath.length > 0 ? rawProjectPath : undefined;
+  const mergedConfig = loadMergedConfig(projectPath);
+
+  const configuredDaemonPort = getConfigValue<number>(mergedConfig, ['daemon', 'port']);
+  const configuredMcpEnabled = getConfigValue<boolean>(mergedConfig, ['mcp_server', 'enabled']);
+  const fallbackPort = Number.isFinite(configuredDaemonPort) ? configuredDaemonPort : DAEMON_PORT;
+
   return {
-    port: parsePort(process.env['VRRBOSE_PORT']),
-    initialProjectPath: rawProjectPath && rawProjectPath.length > 0 ? rawProjectPath : undefined,
-    mcpEnabled: process.env['VRRBOSE_MCP'] === '1',
+    port: parsePort(process.env['VRRBOSE_PORT'] ?? String(fallbackPort)),
+    initialProjectPath: projectPath,
+    mcpEnabled: process.env['VRRBOSE_MCP'] === '1'
+      ? true
+      : (configuredMcpEnabled ?? false),
   };
 }

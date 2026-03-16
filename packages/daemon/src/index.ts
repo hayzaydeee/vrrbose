@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, existsSync } from 'node:fs';
 import { getDb, closeDb, getAllProjects } from './db/client.js';
 import { WatcherPool } from './watcher-pool.js';
 import { createApp } from './api/index.js';
@@ -28,11 +28,19 @@ async function main() {
   // Restore all previously registered projects from DB
   const knownProjects = getAllProjects(db);
   for (const p of knownProjects) {
+    if (!existsSync(p.rootPath)) {
+      console.warn(`[pool] skipping missing project path: ${p.rootPath}`);
+      continue;
+    }
     pool.addProject(p.rootPath);
   }
 
   // If started with a specific project path not already in DB, register it
-  if (INITIAL_PROJECT_PATH && !knownProjects.some(p => p.rootPath === INITIAL_PROJECT_PATH)) {
+  if (
+    INITIAL_PROJECT_PATH &&
+    existsSync(INITIAL_PROJECT_PATH) &&
+    !knownProjects.some(p => p.rootPath === INITIAL_PROJECT_PATH)
+  ) {
     pool.addProject(INITIAL_PROJECT_PATH);
   }
 
