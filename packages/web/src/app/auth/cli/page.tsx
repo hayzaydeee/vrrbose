@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback, Suspense } from 'react';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { SignIn } from '@clerk/nextjs';
@@ -80,7 +81,7 @@ function CliAuthInner() {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
-          <div className={styles.logo}>vrrbose<span className={styles.dot}>.</span>dev</div>
+          <div className={styles.logo}><Image src="/logo.png" alt="Vrrbose" width={100} height={26} /></div>
           <p className={styles.sub}>Loading…</p>
         </div>
       </div>
@@ -91,7 +92,7 @@ function CliAuthInner() {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
-          <div className={styles.logo}>vrrbose<span className={styles.dot}>.</span>dev</div>
+          <div className={styles.logo}><Image src="/logo.png" alt="Vrrbose" width={100} height={26} /></div>
           <div className={styles.spinner} />
           <p className={styles.sub}>Authorizing CLI…</p>
         </div>
@@ -103,7 +104,7 @@ function CliAuthInner() {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
-          <div className={styles.logo}>vrrbose<span className={styles.dot}>.</span>dev</div>
+          <div className={styles.logo}><Image src="/logo.png" alt="Vrrbose" width={100} height={26} /></div>
           <div className={styles.check}>✓</div>
           <h1 className={styles.heading}>You&apos;re authenticated</h1>
           <p className={styles.sub}>The CLI is now signed in. You can close this tab.</p>
@@ -116,7 +117,7 @@ function CliAuthInner() {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
-          <div className={styles.logo}>vrrbose<span className={styles.dot}>.</span>dev</div>
+          <div className={styles.logo}><Image src="/logo.png" alt="Vrrbose" width={100} height={26} /></div>
           <h1 className={styles.heading}>Something went wrong</h1>
           <p className={styles.errorMsg}>{error}</p>
           <p className={styles.sub}>Run <code>vrrbose login</code> again to retry.</p>

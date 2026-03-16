@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import styles from './page.module.css';
 
 import { Mail, FolderOpen, GitBranch, Webhook, Hash } from 'lucide-react';
@@ -102,7 +103,7 @@ export default function LandingPage() {
       <nav className={`${styles.nav} ${scrolled ? styles.navScrolled : ''}`}>
         <div className={styles.navInner}>
           <div className={styles.logo}>
-            vrrbose<span className={styles.logoDot}>.</span>dev
+            <Image src="/logo.png" alt="Vrrbose" width={110} height={28} priority />
           </div>
           <ul className={styles.navLinks}>
             <li><a href="#features">Features</a></li>
@@ -380,7 +381,7 @@ export default function LandingPage() {
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <div className={styles.footerLogo}>
-            vrrbose<span className={styles.logoDot}>.</span>dev
+            <Image src="/logo.png" alt="Vrrbose" width={90} height={22} />
           </div>
           <ul className={styles.footerLinks}>
             <li><a href="#">Docs</a></li>

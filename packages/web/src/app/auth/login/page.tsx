@@ -1,4 +1,5 @@
 import { SignIn } from '@clerk/nextjs';
+import Image from 'next/image';
 import styles from './page.module.css';
 
 const clerkAppearance = {
@@ -21,6 +22,9 @@ const clerkAppearance = {
 export default function LoginPage() {
   return (
     <div className={styles.page}>
+      <div className={styles.logo}>
+        <Image src="/logo.png" alt="Vrrbose" width={100} height={26} />
+      </div>
       <SignIn routing="hash" forceRedirectUrl="/dashboard" appearance={clerkAppearance} />
     </div>
   );
