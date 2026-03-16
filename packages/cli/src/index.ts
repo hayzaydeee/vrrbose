@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, parse } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DAEMON_VERSION } from '@vrrbose/shared';
 import { statusCommand } from './commands/status.js';
 import { askCommand } from './commands/ask.js';
@@ -10,12 +13,34 @@ import { stopCommand } from './commands/stop.js';
 import { uiCommand } from './commands/ui.js';
 import { loginCommand } from './commands/login.js';
 
+function resolveCliVersion(): string {
+  try {
+    let current = dirname(fileURLToPath(import.meta.url));
+    while (true) {
+      const pkgPath = join(current, 'package.json');
+      if (existsSync(pkgPath)) {
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { name?: string; version?: string };
+        if (pkg.name === 'vrrbose' && typeof pkg.version === 'string' && pkg.version.length > 0) {
+          return pkg.version;
+        }
+      }
+
+      const parent = dirname(current);
+      if (parent === current || parse(current).root === current) break;
+      current = parent;
+    }
+  } catch {
+    // Fall through to constant fallback.
+  }
+  return DAEMON_VERSION;
+}
+
 const program = new Command();
 
 program
   .name('vrrbose')
   .description('Developer documentation system — archivist for your code')
-  .version(DAEMON_VERSION);
+  .version(resolveCliVersion());
 
 program
   .command('login')

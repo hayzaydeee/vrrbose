@@ -57,8 +57,18 @@ function AgentContent() {
     }
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    return () => {
+      cancelRef.current?.();
+      cancelRef.current = null;
+    };
+  }, []);
+
   function submit(query: string) {
     if (!query.trim() || loading) return;
+    cancelRef.current?.();
+    cancelRef.current = null;
+
     setMessages(prev => [...prev, { role: 'user', content: query }]);
     setInput('');
     setLoading(true);
@@ -82,21 +92,23 @@ function AgentContent() {
           if (last?.role === 'assistant') next[next.length - 1] = { ...last, streaming: false, queryType };
           return next;
         });
+        cancelRef.current = null;
         setLoading(false);
       },
-      (_err) => {
+      (err) => {
         setMessages(prev => {
           const next = [...prev];
           const last = next[next.length - 1];
           if (last?.role === 'assistant') {
             next[next.length - 1] = {
               ...last,
-              content: 'Could not reach the daemon. Is `vrrbose start` running?',
+              content: err || 'Could not reach the daemon. Is `vrrbose start` running?',
               streaming: false,
             };
           }
           return next;
         });
+        cancelRef.current = null;
         setLoading(false);
       },
     );

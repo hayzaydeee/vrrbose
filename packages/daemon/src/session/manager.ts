@@ -6,7 +6,32 @@ import { insertSession, updateSession, getSessions, getSession, getEvents } from
 import { scoreSession } from './scorer.js';
 import Anthropic from '@anthropic-ai/sdk';
 
-const anthropic = new Anthropic();
+const SUMMARY_TIMEOUT_MS = 20_000;
+
+let anthropic: Anthropic | null = null;
+
+function getAnthropicClient(): Anthropic | null {
+  const apiKey = process.env['ANTHROPIC_API_KEY'];
+  if (!apiKey) return null;
+  if (!anthropic) {
+    anthropic = new Anthropic({ apiKey });
+  }
+  return anthropic;
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 export interface SessionManagerOptions {
   idleThresholdHours?: number;
@@ -132,6 +157,9 @@ export class SessionManager {
 
   private async generateSummaryAsync(sessionId: string, session: Session): Promise<void> {
     try {
+      const client = getAnthropicClient();
+      if (!client) return;
+
       const events = getEvents(this.db, session.projectId, { sessionId, limit: 50 });
       const eventLines = events.slice(0, 20).map(e => {
         const ts = new Date(e.timestamp).toISOString().slice(0, 16);
@@ -142,14 +170,18 @@ export class SessionManager {
       }).join('\n');
 
       const durationMin = Math.round(((session.endedAt ?? Date.now()) - session.startedAt) / 60000);
-      const msg = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 150,
-        messages: [{
-          role: 'user',
-          content: `Summarise this dev session in 1-2 sentences. Focus on what was built or changed.\n\nSession: ${durationMin}m, ${session.commitCount} commits, ${session.fileChurn} lines changed.\n\nEvents:\n${eventLines || 'No events recorded.'}`,
-        }],
-      });
+      const msg = await withTimeout(
+        client.messages.create({
+          model: 'claude-sonnet-4-5-20250929',
+          max_tokens: 150,
+          messages: [{
+            role: 'user',
+            content: `Summarise this dev session in 1-2 sentences. Focus on what was built or changed.\n\nSession: ${durationMin}m, ${session.commitCount} commits, ${session.fileChurn} lines changed.\n\nEvents:\n${eventLines || 'No events recorded.'}`,
+          }],
+        }),
+        SUMMARY_TIMEOUT_MS,
+        'Session summary request timed out'
+      );
 
       const summary = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null;
       if (summary) {

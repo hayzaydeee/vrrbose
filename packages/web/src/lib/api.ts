@@ -2,6 +2,7 @@ import { DAEMON_PORT } from '@vrrbose/shared';
 import type { StatusResponse, Session, Event, AgentResponse } from '@vrrbose/shared';
 
 const BASE = `http://localhost:${DAEMON_PORT}`;
+const STREAM_TIMEOUT_MS = 45_000;
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`);
@@ -65,31 +66,70 @@ export const api = {
     const q = new URLSearchParams({ query });
     if (projectId) q.set('projectId', projectId);
     const ctrl = new AbortController();
+    let cancelled = false;
     (async () => {
+      const timer = setTimeout(() => ctrl.abort(), STREAM_TIMEOUT_MS);
+      let terminalEventSeen = false;
       try {
         const res = await fetch(`${BASE}/api/agent/stream?${q}`, { signal: ctrl.signal });
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          const reason = body.trim() ? `: ${body.trim().slice(0, 240)}` : '';
+          onError(`Agent stream failed (${res.status}${reason})`);
+          return;
+        }
+
         const reader = res.body?.getReader();
         if (!reader) { onError('No response body'); return; }
         const decoder = new TextDecoder();
         let buf = '';
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            if (!terminalEventSeen && !cancelled) {
+              onError('Agent stream ended unexpectedly before completion.');
+            }
+            break;
+          }
           buf += decoder.decode(value, { stream: true });
           const lines = buf.split('\n');
           buf = lines.pop() ?? '';
           for (const line of lines) {
             if (!line.startsWith('data: ')) continue;
-            const parsed = JSON.parse(line.slice(6)) as { chunk?: string; done?: boolean; queryType?: string; error?: string };
+            let parsed: { chunk?: string; done?: boolean; queryType?: string; error?: string };
+            try {
+              parsed = JSON.parse(line.slice(6)) as { chunk?: string; done?: boolean; queryType?: string; error?: string };
+            } catch {
+              onError('Received malformed agent stream payload.');
+              return;
+            }
+
             if (parsed.chunk) onChunk(parsed.chunk);
-            if (parsed.done) onDone(parsed.queryType ?? '');
-            if (parsed.error) onError(parsed.error);
+            if (parsed.done) {
+              terminalEventSeen = true;
+              onDone(parsed.queryType ?? '');
+              return;
+            }
+            if (parsed.error) {
+              terminalEventSeen = true;
+              onError(parsed.error);
+              return;
+            }
           }
         }
       } catch (err) {
-        if ((err as Error).name !== 'AbortError') onError(String(err));
+        if ((err as Error).name === 'AbortError') {
+          if (!cancelled) onError('Agent request timed out.');
+          return;
+        }
+        onError(String(err));
+      } finally {
+        clearTimeout(timer);
       }
     })();
-    return () => ctrl.abort();
+    return () => {
+      cancelled = true;
+      ctrl.abort();
+    };
   },
 };

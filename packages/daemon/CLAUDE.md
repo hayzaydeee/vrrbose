@@ -2,14 +2,14 @@
 ## Vrrbose: recent project context
 
 ### Recent sessions
-- 2026-03-15: 19m, 1 commits, score 10
-- 2026-03-15: 16m, 2 commits, score 20
-- 2026-03-15: ongoing, 0 commits, score n/a
+- 2026-03-16: 120m, 0 commits, score 0
+- 2026-03-16: 355m, 0 commits, score 0
+- 2026-03-16: 181m, 0 commits, score 0
 
 ### Recent commits
-- 2026-03-15: fix(context): update recent sessions and commits for accuracy
-- 2026-03-15: fix(sessions): resume on restart, orphan labelling, live dashboard
-- 2026-03-15: feat(dashboard): enhance dashboard functionality with status and session managem
-- 2026-03-15: fix(daemon): classifier patterns, date anchor, hot-file metrics, Windows fs poll
-- 2026-03-15: feat: enhance classifier rules and context assembly for metrics and recent commi
+- 2026-03-16: refactor(logo): replace Image component with styled text logo across multiple pa
+- 2026-03-16: refactor(logo): replace Image component with styled text logo across multiple pa
+- 2026-03-16: Add favicon images and web manifest for site configuration
+- 2026-03-16: Merge branch 'main' of https://github.com/hayzaydeee/vrrbose
+- 2026-03-15: fix(daemon): correct ui static path, bump to 0.1.6
 <!-- /VRRBOSE:context -->
