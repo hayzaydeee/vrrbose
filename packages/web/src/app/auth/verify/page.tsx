@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import styles from './page.module.css';
 
 export default function VerifyPage() {
@@ -6,7 +5,7 @@ export default function VerifyPage() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.logo}>
-          <Image src="/logo.png" alt="Vrrbose" width={100} height={26} />
+          <span style={{color:'#FF7D00'}}>v</span><span style={{color:'#FFECD1'}}>r</span><span style={{color:'#15616D'}}>r</span>bose<span className={styles.dot}>.</span>dev
         </div>
 
         <div className={styles.icon}>

@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { StatusBadge } from './StatusBadge';
@@ -53,7 +52,7 @@ export function GlobalNav() {
   return (
     <nav className={styles.nav}>
       <div className={styles.logo}>
-        <Image src="/logo.png" alt="Vrrbose" width={120} height={32} priority />
+        <span className={styles.logoText}><span style={{color:'#FF7D00'}}>v</span><span style={{color:'#FFECD1'}}>r</span><span style={{color:'#15616D'}}>r</span>bose.dev</span>
       </div>
       {projects.length > 1 && (
         <div className={styles.projectSwitcher}>

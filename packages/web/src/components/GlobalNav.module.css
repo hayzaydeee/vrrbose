@@ -11,9 +11,8 @@
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-3);
-  display: flex;
-  align-items: center;
 }
+.logoText { font-family: var(--font-display); font-size: var(--text-lg); letter-spacing: 0.02em; }
 
 .projectSwitcher { margin-bottom: var(--space-4); }
 .projectSelect {
