@@ -132,7 +132,6 @@ Get-Content "$HOME/.vrrbose/daemon.log" -Wait
 ## Links
 
 - Website: [vrrbose.dev](https://vrrbose.dev)
-- Dashboard: [app.vrrbose.dev](https://app.vrrbose.dev)
 
 ---
 
