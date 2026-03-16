@@ -66,6 +66,12 @@ CREATE TABLE IF NOT EXISTS capsules (
   sync_status   TEXT NOT NULL DEFAULT 'pending'
 );
 
+CREATE TABLE IF NOT EXISTS sync_state (
+  key         TEXT PRIMARY KEY,
+  value       TEXT NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_events_project_id    ON events(project_id);
 CREATE INDEX IF NOT EXISTS idx_events_session_id    ON events(session_id);

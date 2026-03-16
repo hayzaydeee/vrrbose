@@ -250,3 +250,18 @@ export function markSessionsSynced(db: Database.Database, ids: string[]): void {
   const placeholders = ids.map(() => '?').join(',');
   db.prepare(`UPDATE sessions SET sync_status = 'synced' WHERE id IN (${placeholders})`).run(...ids);
 }
+
+export function getSyncState(db: Database.Database, key: string): string | null {
+  const row = db.prepare('SELECT value FROM sync_state WHERE key = ?').get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setSyncState(db: Database.Database, key: string, value: string): void {
+  db.prepare(`
+    INSERT INTO sync_state (key, value, updated_at)
+    VALUES (@key, @value, @updatedAt)
+    ON CONFLICT(key) DO UPDATE SET
+      value = excluded.value,
+      updated_at = excluded.updated_at
+  `).run({ key, value, updatedAt: Date.now() });
+}

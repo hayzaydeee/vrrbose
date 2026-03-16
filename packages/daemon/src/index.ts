@@ -6,12 +6,13 @@ import { WatcherPool } from './watcher-pool.js';
 import { createApp } from './api/index.js';
 import { McpServer } from './mcp/server.js';
 import { startSyncWorker } from './sync/worker.js';
-import { DAEMON_PORT } from '@vrrbose/shared';
+import { loadRuntimeConfig } from './config/runtime.js';
 
-const INITIAL_PROJECT_PATH = process.env['VRRBOSE_PROJECT_PATH'];
+const runtimeConfig = loadRuntimeConfig();
+const INITIAL_PROJECT_PATH = runtimeConfig.initialProjectPath;
 const DB_DIR = join(homedir(), '.vrrbose');
 const DB_PATH = join(DB_DIR, 'vrrbose.db');
-const PORT = parseInt(process.env['VRRBOSE_PORT'] ?? String(DAEMON_PORT), 10);
+const PORT = runtimeConfig.port;
 
 async function main() {
   // Ensure ~/.vrrbose exists
@@ -41,7 +42,7 @@ async function main() {
 
   // Optional MCP server
   let mcpServer: McpServer | null = null;
-  if (process.env['VRRBOSE_MCP'] === '1') {
+  if (runtimeConfig.mcpEnabled) {
     mcpServer = new McpServer(db, defaultProjectId);
     mcpServer.start();
   }
