@@ -31,13 +31,22 @@ export interface ProjectStatus {
 
 export interface Capsule {
   id: string;
-  type: 'merge' | 'tag' | 'weekly' | 'manual';
+  type?: 'merge' | 'tag' | 'weekly' | 'manual';
+  trigger?: 'merge' | 'tag' | 'weekly' | 'manual';
   createdAt: number;
   title: string;
   summary?: string;
+  keyFiles?: string[];
+  decisions?: string[];
+  openQuestions?: string[];
   branch?: string;
   tag?: string;
   fileCount?: number;
+}
+
+export interface CapsuleDetail {
+  capsule: Capsule;
+  events: Event[];
 }
 
 export interface GeneratedDocument {
@@ -47,6 +56,12 @@ export interface GeneratedDocument {
   preview: string[];
 }
 
+export interface DocumentShareLink {
+  token: string;
+  expiresAt: number;
+  sharePath: string;
+}
+
 export interface NotionDestinationConfig {
   enabled: boolean;
   workspaceName: string | null;
@@ -54,12 +69,38 @@ export interface NotionDestinationConfig {
   tokenMasked: string | null;
 }
 
+export interface ReadmeDiffLine {
+  type: 'add' | 'remove' | 'context';
+  content: string;
+}
+
+export interface ReadmeDraft {
+  readmePath: string;
+  current: string;
+  proposed: string;
+  diff: ReadmeDiffLine[];
+  changed: boolean;
+}
+
+export interface DecisionEntry {
+  id: string;
+  capsuleId: string;
+  createdAt: number;
+  title: string;
+  summary: string;
+  trigger: 'manual' | 'merge' | 'tag' | 'weekly';
+}
+
 export const api = {
   status: () => get<StatusResponse>('/api/status'),
   projects: () => get<ProjectStatus[]>('/api/projects'),
   capsules: () => get<Capsule[]>('/api/capsules').catch(() => [] as Capsule[]),
+  capsule: (id: string) => get<CapsuleDetail>(`/api/capsules/${encodeURIComponent(id)}`),
   documents: () => get<GeneratedDocument[]>('/api/documents').catch(() => [] as GeneratedDocument[]),
   document: (name: string) => get<{ name: string; content: string }>(`/api/documents/${encodeURIComponent(name)}`),
+  shareDocument: (name: string, expiresInMinutes: number) =>
+    post<DocumentShareLink>(`/api/documents/${encodeURIComponent(name)}/share`, { expiresInMinutes }),
+  documentShareUrl: (sharePath: string) => `${BASE}${sharePath}`,
   sessions: (limit = 20) => get<Session[]>(`/api/sessions?limit=${limit}`),
   session: (id: string) => get<{ session: Session; events: Event[] }>(`/api/sessions/${id}`),
   events: (params?: { sessionId?: string; type?: string; limit?: number; projectId?: string }) => {
@@ -79,6 +120,12 @@ export const api = {
   updateNotionDestination: (payload: { enabled?: boolean; workspaceName?: string; databaseId?: string; token?: string }) =>
     post<NotionDestinationConfig>('/api/destinations/notion', payload),
   testNotionDestination: () => post<{ reachable: boolean; message: string }>('/api/destinations/notion/test', {}),
+  readmeDraft: (projectId?: string) =>
+    get<ReadmeDraft>(`/api/readme${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''}`),
+  applyReadmeDraft: (projectId?: string) =>
+    post<{ readmePath: string; changed: boolean }>('/api/readme/apply', projectId ? { projectId } : {}),
+  decisions: (projectId?: string, limit = 100) =>
+    get<DecisionEntry[]>(`/api/decisions?limit=${limit}${projectId ? `&projectId=${encodeURIComponent(projectId)}` : ''}`),
   askStream: (
     query: string,
     projectId: string | undefined,

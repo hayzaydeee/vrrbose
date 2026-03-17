@@ -15,6 +15,8 @@ import { projectsRouter } from './routes/projects.js';
 import { capsulesRouter } from './routes/capsules.js';
 import { documentsRouter } from './routes/documents.js';
 import { destinationsRouter } from './routes/destinations.js';
+import { readmeRouter } from './routes/readme.js';
+import { decisionsRouter } from './routes/decisions.js';
 import { createSocketServer, broadcastEvent } from './socket.js';
 import type { Server as SocketServer } from 'socket.io';
 import type { WatcherPool } from '../watcher-pool.js';
@@ -52,6 +54,8 @@ export function createApp(opts: AppOptions): AppInstance {
   app.use('/api/capsules', capsulesRouter(opts.db, opts.defaultProjectId));
   app.use('/api/documents', documentsRouter());
   app.use('/api/destinations', destinationsRouter(opts.db));
+  app.use('/api/readme', readmeRouter(opts.db, opts.defaultProjectId));
+  app.use('/api/decisions', decisionsRouter(opts.db, opts.defaultProjectId));
 
   // Health check
   app.get('/health', (_req, res) => res.json({ ok: true }));

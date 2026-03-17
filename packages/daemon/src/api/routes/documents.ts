@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomUUID } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
@@ -10,9 +11,20 @@ interface DocumentListItem {
   preview: string[];
 }
 
+interface ShareToken {
+  fileName: string;
+  expiresAt: number;
+}
+
+const shareTokens = new Map<string, ShareToken>();
+
 export function documentsRouter(): Router {
   const router = Router();
   const outputDir = join(homedir(), '.vrrbose', 'output');
+
+  function isValidName(name: string): boolean {
+    return name === basename(name) && name.toLowerCase().endsWith('.md');
+  }
 
   router.get('/', (_req, res) => {
     if (!existsSync(outputDir)) {
@@ -47,7 +59,7 @@ export function documentsRouter(): Router {
   router.get('/:name', (req, res) => {
     const requested = req.params['name'] ?? '';
     const safeName = basename(requested);
-    if (safeName !== requested || !safeName.toLowerCase().endsWith('.md')) {
+    if (!isValidName(safeName) || safeName !== requested) {
       res.status(400).json({ ok: false, error: 'Invalid document name' });
       return;
     }
@@ -65,7 +77,7 @@ export function documentsRouter(): Router {
   router.get('/:name/download', (req, res) => {
     const requested = req.params['name'] ?? '';
     const safeName = basename(requested);
-    if (safeName !== requested || !safeName.toLowerCase().endsWith('.md')) {
+    if (!isValidName(safeName) || safeName !== requested) {
       res.status(400).json({ ok: false, error: 'Invalid document name' });
       return;
     }
@@ -78,6 +90,63 @@ export function documentsRouter(): Router {
 
     res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+    res.send(readFileSync(filePath, 'utf8'));
+  });
+
+  router.post('/:name/share', (req, res) => {
+    const requested = req.params['name'] ?? '';
+    const safeName = basename(requested);
+    if (!isValidName(safeName) || safeName !== requested) {
+      res.status(400).json({ ok: false, error: 'Invalid document name' });
+      return;
+    }
+
+    const filePath = join(outputDir, safeName);
+    if (!existsSync(filePath)) {
+      res.status(404).json({ ok: false, error: 'Document not found' });
+      return;
+    }
+
+    const body = req.body as { expiresInMinutes?: number };
+    const minutes = Number.isFinite(body.expiresInMinutes)
+      ? Math.max(5, Math.min(60 * 24 * 30, Math.floor(body.expiresInMinutes as number)))
+      : 60;
+    const expiresAt = Date.now() + minutes * 60 * 1000;
+    const token = randomUUID().replace(/-/g, '');
+
+    shareTokens.set(token, { fileName: safeName, expiresAt });
+
+    res.json({
+      ok: true,
+      data: {
+        token,
+        expiresAt,
+        sharePath: `/api/documents/share/${token}`,
+      },
+    });
+  });
+
+  router.get('/share/:token', (req, res) => {
+    const token = req.params['token'] ?? '';
+    const share = shareTokens.get(token);
+    if (!share) {
+      res.status(404).json({ ok: false, error: 'Share link not found' });
+      return;
+    }
+
+    if (Date.now() > share.expiresAt) {
+      shareTokens.delete(token);
+      res.status(410).json({ ok: false, error: 'Share link expired' });
+      return;
+    }
+
+    const filePath = join(outputDir, share.fileName);
+    if (!existsSync(filePath)) {
+      res.status(404).json({ ok: false, error: 'Document not found' });
+      return;
+    }
+
+    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
     res.send(readFileSync(filePath, 'utf8'));
   });
 

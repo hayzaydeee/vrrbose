@@ -9,7 +9,11 @@ export default function DocumentsPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [prompt, setPrompt] = useState('generate weekly digest');
+  const [shareMinutes, setShareMinutes] = useState(60);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareExpiresAt, setShareExpiresAt] = useState<number | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +63,26 @@ export default function DocumentsPage() {
     }
   };
 
+  const onShare = async () => {
+    if (!selected) return;
+    setSharing(true);
+    setError(null);
+    try {
+      const data = await api.shareDocument(selected, shareMinutes);
+      setShareUrl(api.documentShareUrl(data.sharePath));
+      setShareExpiresAt(data.expiresAt);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create share link');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const onCopyShare = () => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl).catch(() => {});
+  };
+
   return (
     <div className={styles.layout}>
       <GlobalNav />
@@ -82,6 +106,37 @@ export default function DocumentsPage() {
               </a>
             )}
           </div>
+
+          <div className={styles.shareRow}>
+            <label className={styles.shareLabel}>
+              Share expiry
+              <select
+                className={styles.shareSelect}
+                value={shareMinutes}
+                onChange={(e) => setShareMinutes(Number.parseInt(e.target.value, 10))}
+              >
+                <option value={15}>15 min</option>
+                <option value={60}>1 hour</option>
+                <option value={240}>4 hours</option>
+                <option value={1440}>24 hours</option>
+                <option value={10080}>7 days</option>
+              </select>
+            </label>
+            <button className={styles.shareButton} onClick={onShare} disabled={!selected || sharing}>
+              {sharing ? 'Creating...' : 'Create share link'}
+            </button>
+            {shareUrl && (
+              <button className={styles.copyButton} onClick={onCopyShare}>
+                Copy link
+              </button>
+            )}
+          </div>
+
+          {shareUrl && shareExpiresAt && (
+            <p className={styles.shareMeta}>
+              {shareUrl} (expires {new Date(shareExpiresAt).toLocaleString()})
+            </p>
+          )}
         </header>
 
         {loading && <p className={styles.muted}>Loading...</p>}
