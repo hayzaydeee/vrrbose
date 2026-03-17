@@ -77,7 +77,7 @@ export default function SettingsPage() {
   return (
     <div className={styles.layout}>
       <GlobalNav />
-      <main className={styles.main}>
+      <main id="main-content" tabIndex={-1} className={styles.main}>
         <h1 className={styles.heading}>Settings</h1>
 
         {/* Account */}

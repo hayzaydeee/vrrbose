@@ -66,7 +66,7 @@ export default function MetricsPage() {
   return (
     <div className={styles.layout}>
       <GlobalNav />
-      <main className={styles.main}>
+      <main id="main-content" tabIndex={-1} className={styles.main}>
         <h1 className={styles.heading}>Metrics</h1>
 
         {loading && <p className={styles.muted}>Loading…</p>}

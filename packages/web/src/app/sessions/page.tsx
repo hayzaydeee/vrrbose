@@ -98,7 +98,7 @@ export default function SessionsPage() {
   return (
     <div className={styles.layout}>
       <GlobalNav />
-      <main className={styles.main}>
+      <main id="main-content" tabIndex={-1} className={styles.main}>
         <h1 className={styles.heading}>Sessions</h1>
         <div className={styles.controls}>
           <input

@@ -52,7 +52,7 @@ export default function ReadmePage() {
   return (
     <div className={styles.layout}>
       <GlobalNav />
-      <main className={styles.main}>
+      <main id="main-content" tabIndex={-1} className={styles.main}>
         <header className={styles.header}>
           <div>
             <h1 className={styles.heading}>Living README</h1>

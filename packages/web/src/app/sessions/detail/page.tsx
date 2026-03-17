@@ -265,7 +265,7 @@ function SessionReplayContent() {
         </aside>
 
         {/* Center: commit detail / diff */}
-        <main className={styles.diffPanel}>
+        <main id="main-content" tabIndex={-1} className={styles.diffPanel}>
           {active ? (
             <CommitDetail
               event={active}

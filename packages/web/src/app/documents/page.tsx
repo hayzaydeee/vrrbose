@@ -103,7 +103,7 @@ export default function DocumentsPage() {
   return (
     <div className={styles.layout}>
       <GlobalNav />
-      <main className={styles.main}>
+      <main id="main-content" tabIndex={-1} className={styles.main}>
         <header className={styles.header}>
           <h1 className={styles.heading}>Documents</h1>
           <p className={styles.sub}>Generated outputs from agent document workflows.</p>
