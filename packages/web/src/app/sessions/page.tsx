@@ -7,6 +7,8 @@ import { api } from '../../lib/api';
 import type { Session } from '@vrrbose/shared';
 import styles from './page.module.css';
 
+const PAGE_SIZE = 30;
+
 function getDateGroup(ts: number): string {
   const now = Date.now();
   const DAY = 86400_000;
@@ -38,30 +40,87 @@ function scoreBadgeClass(score: number): string {
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed' | 'orphaned'>('all');
+  const [query, setQuery] = useState('');
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([api.sessions(50), api.status()])
+    Promise.all([api.sessions(PAGE_SIZE, 0), api.status()])
       .then(([s, status]) => {
         setSessions(s);
+        setHasMore(s.length === PAGE_SIZE);
         setActiveSessionId(status.activeSession?.id ?? null);
       })
       .catch(e => setError(e instanceof Error ? e.message : 'Failed'))
       .finally(() => setLoading(false));
   }, []);
 
-  const maxDuration = Math.max(...sessions.map(s => s.endedAt ? s.endedAt - s.startedAt : 0), 1);
-  const grouped = groupSessions(sessions);
+  useEffect(() => {
+    const id = setInterval(() => {
+      api.status().then((status) => {
+        setActiveSessionId(status.activeSession?.id ?? null);
+      }).catch(() => {});
+    }, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  async function loadMore() {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const next = await api.sessions(PAGE_SIZE, sessions.length);
+      setSessions((prev) => [...prev, ...next]);
+      setHasMore(next.length === PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  const q = query.trim().toLowerCase();
+  const filteredSessions = sessions.filter((s) => {
+    const isActive = s.id === activeSessionId;
+    const isOrphaned = !s.endedAt && !isActive;
+    if (statusFilter === 'active' && !isActive) return false;
+    if (statusFilter === 'completed' && !s.endedAt) return false;
+    if (statusFilter === 'orphaned' && !isOrphaned) return false;
+
+    if (!q) return true;
+    const hay = `${s.id} ${s.summary ?? ''} ${s.commitCount} ${s.fileChurn}`.toLowerCase();
+    return hay.includes(q);
+  });
+
+  const maxDuration = Math.max(...filteredSessions.map(s => s.endedAt ? s.endedAt - s.startedAt : 0), 1);
+  const grouped = groupSessions(filteredSessions);
 
   return (
     <div className={styles.layout}>
       <GlobalNav />
       <main className={styles.main}>
         <h1 className={styles.heading}>Sessions</h1>
+        <div className={styles.controls}>
+          <input
+            className={styles.search}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by summary, id, stats..."
+          />
+          <select
+            className={styles.filter}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'completed' | 'orphaned')}
+          >
+            <option value="all">All</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="orphaned">Orphaned</option>
+          </select>
+        </div>
         {loading && <p className={styles.muted}>Loading…</p>}
         {error && <p className={styles.error}>{error}</p>}
-        {!loading && !error && sessions.length === 0 && (
+        {!loading && !error && filteredSessions.length === 0 && (
           <div className={styles.empty}>
             <p className={styles.emptyTitle}>No sessions yet</p>
             <p className={styles.muted}>Start the daemon and make some commits to begin capturing sessions.</p>
@@ -83,6 +142,14 @@ export default function SessionsPage() {
             </div>
           </div>
         ))}
+
+        {!loading && !error && hasMore && (
+          <div className={styles.loadMoreWrap}>
+            <button className={styles.loadMoreBtn} onClick={() => loadMore()} disabled={loadingMore}>
+              {loadingMore ? 'Loading...' : 'Load more'}
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );

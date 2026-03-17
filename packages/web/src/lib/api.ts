@@ -101,8 +101,9 @@ export const api = {
   shareDocument: (name: string, expiresInMinutes: number) =>
     post<DocumentShareLink>(`/api/documents/${encodeURIComponent(name)}/share`, { expiresInMinutes }),
   documentShareUrl: (sharePath: string) => `${BASE}${sharePath}`,
-  sessions: (limit = 20) => get<Session[]>(`/api/sessions?limit=${limit}`),
-  session: (id: string) => get<{ session: Session; events: Event[] }>(`/api/sessions/${id}`),
+  sessions: (limit = 20, offset = 0, projectId?: string) =>
+    get<Session[]>(`/api/sessions?limit=${limit}&offset=${offset}${projectId ? `&projectId=${encodeURIComponent(projectId)}` : ''}`),
+  session: (id: string) => get<{ session: Session; events: Event[]; capsules?: Capsule[] }>(`/api/sessions/${id}`),
   events: (params?: { sessionId?: string; type?: string; limit?: number; projectId?: string }) => {
     const q = new URLSearchParams();
     if (params?.sessionId) q.set('sessionId', params.sessionId);

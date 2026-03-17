@@ -7,6 +7,7 @@ import { ChapterCard } from '../../../components/ChapterCard';
 import { EventChip } from '../../../components/EventChip';
 import { api } from '../../../lib/api';
 import type { Session, Event } from '@vrrbose/shared';
+import type { Capsule } from '../../../lib/api';
 import styles from './page.module.css';
 
 function formatTime(ts: number) {
@@ -114,14 +115,21 @@ function SessionReplayContent() {
   const id = searchParams.get('id');
   const [session, setSession] = useState<Session | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [capsules, setCapsules] = useState<Capsule[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speedMs, setSpeedMs] = useState(2200);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) { setLoading(false); setError('No session ID provided'); return; }
     api.session(id)
-      .then(({ session, events }) => { setSession(session); setEvents(events); })
+      .then(({ session, events, capsules }) => {
+        setSession(session);
+        setEvents(events);
+        setCapsules(capsules ?? []);
+      })
       .catch(e => setError(e instanceof Error ? e.message : 'Failed'))
       .finally(() => setLoading(false));
   }, [id]);
@@ -131,6 +139,42 @@ function SessionReplayContent() {
 
   const commits = events.filter(e => e.type === 'git_commit');
   const active = commits[activeIdx];
+
+  useEffect(() => {
+    if (!isPlaying || commits.length <= 1) return;
+    const timer = setTimeout(() => {
+      setActiveIdx((prev) => {
+        if (prev >= commits.length - 1) {
+          setIsPlaying(false);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, speedMs);
+    return () => clearTimeout(timer);
+  }, [isPlaying, speedMs, activeIdx, commits.length]);
+
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const target = ev.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      if (ev.key === 'ArrowRight') {
+        ev.preventDefault();
+        setActiveIdx((prev) => Math.min(prev + 1, Math.max(0, commits.length - 1)));
+      } else if (ev.key === 'ArrowLeft') {
+        ev.preventDefault();
+        setActiveIdx((prev) => Math.max(0, prev - 1));
+      } else if (ev.key === ' ') {
+        ev.preventDefault();
+        setIsPlaying((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [commits.length]);
 
   const durMs = session.endedAt ? session.endedAt - session.startedAt : Date.now() - session.startedAt;
   const sessionDate = new Date(session.startedAt).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -145,6 +189,41 @@ function SessionReplayContent() {
           <div className={styles.chaptersHeader}>
             <div className={styles.chaptersTitle}>{commits.length} chapter{commits.length !== 1 ? 's' : ''}</div>
             <div className={styles.chaptersDate}>{sessionDate} · {formatDuration(durMs)}</div>
+            <div className={styles.playbackRow}>
+              <button
+                className={styles.playBtn}
+                onClick={() => setActiveIdx((prev) => Math.max(0, prev - 1))}
+                disabled={activeIdx <= 0}
+              >
+                Prev
+              </button>
+              <button
+                className={styles.playBtn}
+                onClick={() => setIsPlaying((prev) => !prev)}
+                disabled={commits.length <= 1}
+              >
+                {isPlaying ? 'Pause' : 'Play'}
+              </button>
+              <button
+                className={styles.playBtn}
+                onClick={() => setActiveIdx((prev) => Math.min(prev + 1, Math.max(0, commits.length - 1)))}
+                disabled={activeIdx >= commits.length - 1}
+              >
+                Next
+              </button>
+            </div>
+            <div className={styles.speedRow}>
+              <span>Speed</span>
+              <select
+                className={styles.speedSelect}
+                value={speedMs}
+                onChange={(e) => setSpeedMs(Number.parseInt(e.target.value, 10))}
+              >
+                <option value={3200}>Slow</option>
+                <option value={2200}>Normal</option>
+                <option value={1200}>Fast</option>
+              </select>
+            </div>
           </div>
           {commits.map((c, i) => {
             const msg = String(c.payload['message'] ?? '');
@@ -205,6 +284,13 @@ function SessionReplayContent() {
         {/* Right: events timeline */}
         <aside className={styles.whyPanel}>
           <div className={styles.whyTitle}>All events</div>
+          {capsules.length > 0 && (
+            <div className={styles.capsuleStrip}>
+              {capsules.slice(0, 3).map((c) => (
+                <div key={c.id} className={styles.capsulePill}>{c.title}</div>
+              ))}
+            </div>
+          )}
           {events.length === 0 && (
             <p className={styles.eventMeta}>No events recorded.</p>
           )}
