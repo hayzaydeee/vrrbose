@@ -47,6 +47,13 @@ export interface GeneratedDocument {
   preview: string[];
 }
 
+export interface NotionDestinationConfig {
+  enabled: boolean;
+  workspaceName: string | null;
+  databaseId: string | null;
+  tokenMasked: string | null;
+}
+
 export const api = {
   status: () => get<StatusResponse>('/api/status'),
   projects: () => get<ProjectStatus[]>('/api/projects'),
@@ -68,6 +75,10 @@ export const api = {
   generateDocument: (query: string, sessionId?: string, projectId?: string) =>
     post<AgentResponse>('/api/agent' + (projectId ? `?projectId=${projectId}` : ''), { query, sessionId, format: 'web' }),
   documentDownloadUrl: (name: string) => `${BASE}/api/documents/${encodeURIComponent(name)}/download`,
+  notionDestination: () => get<NotionDestinationConfig>('/api/destinations/notion'),
+  updateNotionDestination: (payload: { enabled?: boolean; workspaceName?: string; databaseId?: string; token?: string }) =>
+    post<NotionDestinationConfig>('/api/destinations/notion', payload),
+  testNotionDestination: () => post<{ reachable: boolean; message: string }>('/api/destinations/notion/test', {}),
   askStream: (
     query: string,
     projectId: string | undefined,

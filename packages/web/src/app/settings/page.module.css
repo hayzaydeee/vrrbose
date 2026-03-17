@@ -83,6 +83,72 @@
   line-height: 1.7;
   max-width: 480px;
 }
+
+.destinationGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.destinationLabel {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.destinationInput {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.destinationActions {
+  display: flex;
+  gap: 10px;
+}
+
+.destinationBtn,
+.destinationGhostBtn {
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.destinationBtn {
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.destinationBtn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.destinationGhostBtn {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.destinationStatus {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 900px) {
+  .destinationGrid {
+    grid-template-columns: 1fr;
+  }
+}
 .configDesc code {
   font-family: var(--font-code);
   font-size: var(--text-xs);

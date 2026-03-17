@@ -11,6 +11,13 @@ export default function SettingsPage() {
   const [daemonOnline, setDaemonOnline] = useState<boolean | null>(null);
   const [daemonPort, setDaemonPort] = useState<number | null>(null);
   const [copiedPort, setCopiedPort] = useState(false);
+  const [notionEnabled, setNotionEnabled] = useState(false);
+  const [notionWorkspace, setNotionWorkspace] = useState('');
+  const [notionDatabaseId, setNotionDatabaseId] = useState('');
+  const [notionToken, setNotionToken] = useState('');
+  const [notionTokenMasked, setNotionTokenMasked] = useState<string | null>(null);
+  const [notionSaving, setNotionSaving] = useState(false);
+  const [notionStatus, setNotionStatus] = useState<string | null>(null);
 
   useEffect(() => {
     api.status()
@@ -19,12 +26,52 @@ export default function SettingsPage() {
         setDaemonPort((s as unknown as Record<string, unknown>)['port'] as number ?? null);
       })
       .catch(() => setDaemonOnline(false));
+
+    api.notionDestination()
+      .then((config) => {
+        setNotionEnabled(config.enabled);
+        setNotionWorkspace(config.workspaceName ?? '');
+        setNotionDatabaseId(config.databaseId ?? '');
+        setNotionTokenMasked(config.tokenMasked ?? null);
+      })
+      .catch(() => {});
   }, []);
 
   function copyStartCmd() {
     navigator.clipboard.writeText('vrrbose start').catch(() => {});
     setCopiedPort(true);
     setTimeout(() => setCopiedPort(false), 2000);
+  }
+
+  async function saveNotion() {
+    setNotionSaving(true);
+    setNotionStatus(null);
+    try {
+      const updated = await api.updateNotionDestination({
+        enabled: notionEnabled,
+        workspaceName: notionWorkspace,
+        databaseId: notionDatabaseId,
+        token: notionToken,
+      });
+
+      setNotionToken('');
+      setNotionTokenMasked(updated.tokenMasked ?? null);
+      setNotionStatus('Saved Notion destination settings.');
+    } catch (e) {
+      setNotionStatus(e instanceof Error ? e.message : 'Failed to save Notion settings');
+    } finally {
+      setNotionSaving(false);
+    }
+  }
+
+  async function testNotion() {
+    setNotionStatus(null);
+    try {
+      const result = await api.testNotionDestination();
+      setNotionStatus(result.message);
+    } catch (e) {
+      setNotionStatus(e instanceof Error ? e.message : 'Notion test failed');
+    }
   }
 
   return (
@@ -123,6 +170,67 @@ export default function SettingsPage() {
             Vrrbose as an MCP server (default port 7332). Connect Claude Code, Cursor, or other
             MCP-compatible tools to give them live access to your project history.
           </p>
+        </section>
+
+        {/* Destination: Notion */}
+        <section className={styles.section}>
+          <div className={styles.sectionLabel}>Destination - Notion</div>
+          <p className={styles.configDesc}>
+            Configure Notion as your first publishing destination for generated documents.
+          </p>
+
+          <div className={styles.destinationGrid}>
+            <label className={styles.destinationLabel}>
+              <span>Enabled</span>
+              <input
+                type="checkbox"
+                checked={notionEnabled}
+                onChange={(e) => setNotionEnabled(e.target.checked)}
+              />
+            </label>
+
+            <label className={styles.destinationLabel}>
+              <span>Workspace</span>
+              <input
+                className={styles.destinationInput}
+                value={notionWorkspace}
+                onChange={(e) => setNotionWorkspace(e.target.value)}
+                placeholder="My Team Workspace"
+              />
+            </label>
+
+            <label className={styles.destinationLabel}>
+              <span>Database ID</span>
+              <input
+                className={styles.destinationInput}
+                value={notionDatabaseId}
+                onChange={(e) => setNotionDatabaseId(e.target.value)}
+                placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              />
+            </label>
+
+            <label className={styles.destinationLabel}>
+              <span>Integration Token</span>
+              <input
+                className={styles.destinationInput}
+                value={notionToken}
+                onChange={(e) => setNotionToken(e.target.value)}
+                placeholder={notionTokenMasked ?? 'secret_xxx'}
+                type="password"
+              />
+            </label>
+          </div>
+
+          <div className={styles.destinationActions}>
+            <button className={styles.destinationBtn} onClick={saveNotion} disabled={notionSaving}>
+              {notionSaving ? 'Saving...' : 'Save'}
+            </button>
+            <button className={styles.destinationGhostBtn} onClick={testNotion}>
+              Test connection
+            </button>
+          </div>
+
+          {notionStatus && <p className={styles.destinationStatus}>{notionStatus}</p>}
         </section>
       </main>
     </div>
