@@ -23,6 +23,7 @@ export function getDb(dbPath: string): Database.Database {
   const schemaPath = existsSync(schemaSibling) ? schemaSibling : schemaParent;
   const schema = readFileSync(schemaPath, 'utf8');
   db.exec(schema);
+  runOneTimeMigrations(db);
 
   return db;
 }
@@ -265,6 +266,43 @@ export function insertCapsule(db: Database.Database, capsule: Capsule): void {
   });
 }
 
+export function upsertFileSummary(
+  db: Database.Database,
+  input: {
+    projectId: string;
+    sessionId: string;
+    filePath: string;
+    linesAdded?: number;
+    linesRemoved?: number;
+    timestamp?: number;
+  },
+): void {
+  const now = input.timestamp ?? Date.now();
+  const id = `${input.sessionId}:${input.filePath}`;
+  const linesAdded = Math.max(0, Math.floor(input.linesAdded ?? 0));
+  const linesRemoved = Math.max(0, Math.floor(input.linesRemoved ?? 0));
+
+  db.prepare(`
+    INSERT INTO file_summaries
+      (id, project_id, session_id, file_path, edit_count, lines_added, lines_removed, first_edit_at, last_edit_at)
+    VALUES
+      (@id, @projectId, @sessionId, @filePath, 1, @linesAdded, @linesRemoved, @now, @now)
+    ON CONFLICT(id) DO UPDATE SET
+      edit_count = file_summaries.edit_count + 1,
+      lines_added = file_summaries.lines_added + excluded.lines_added,
+      lines_removed = file_summaries.lines_removed + excluded.lines_removed,
+      last_edit_at = excluded.last_edit_at
+  `).run({
+    id,
+    projectId: input.projectId,
+    sessionId: input.sessionId,
+    filePath: input.filePath,
+    linesAdded,
+    linesRemoved,
+    now,
+  });
+}
+
 export function getCapsules(
   db: Database.Database,
   projectId: string,
@@ -308,6 +346,20 @@ function rowToCapsule(row: Record<string, unknown>): Capsule {
   };
 }
 
+export function getPendingSyncCapsules(db: Database.Database, limit = 100): Capsule[] {
+  const rows = db.prepare(`
+    SELECT * FROM capsules WHERE sync_status = 'pending'
+    ORDER BY created_at ASC LIMIT ?
+  `).all(limit) as Record<string, unknown>[];
+  return rows.map(rowToCapsule);
+}
+
+export function markCapsulesSynced(db: Database.Database, ids: string[]): void {
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => '?').join(',');
+  db.prepare(`UPDATE capsules SET sync_status = 'synced' WHERE id IN (${placeholders})`).run(...ids);
+}
+
 export function getSyncState(db: Database.Database, key: string): string | null {
   const row = db.prepare('SELECT value FROM sync_state WHERE key = ?').get(key) as { value: string } | undefined;
   return row?.value ?? null;
@@ -321,4 +373,75 @@ export function setSyncState(db: Database.Database, key: string, value: string):
       value = excluded.value,
       updated_at = excluded.updated_at
   `).run({ key, value, updatedAt: Date.now() });
+}
+
+function runOneTimeMigrations(db: Database.Database): void {
+  const migrationKey = 'migration.20260316.backfill_session_metrics_v1';
+
+  const candidateRows = db.prepare(`
+    SELECT id, project_id, active_time_ms, file_churn
+    FROM sessions
+    WHERE ended_at IS NOT NULL AND (active_time_ms = 0 OR file_churn = 0)
+  `).all() as Array<{
+    id: string;
+    project_id: string;
+    active_time_ms: number;
+    file_churn: number;
+  }>;
+
+  const updateStmt = db.prepare(`
+    UPDATE sessions
+    SET active_time_ms = @activeTimeMs,
+        file_churn = @fileChurn
+    WHERE id = @id
+  `);
+
+  const tx = db.transaction(() => {
+    for (const row of candidateRows) {
+      const events = getEvents(db, row.project_id, { sessionId: row.id, limit: 5000 })
+        .slice()
+        .sort((a, b) => a.timestamp - b.timestamp);
+
+      const derivedActiveTimeMs = deriveActiveTimeFromEvents(events);
+      const derivedFileChurn = deriveFileChurnFromEvents(events);
+
+      const activeTimeMs = row.active_time_ms > 0 ? row.active_time_ms : derivedActiveTimeMs;
+      const fileChurn = row.file_churn > 0 ? row.file_churn : derivedFileChurn;
+
+      updateStmt.run({ id: row.id, activeTimeMs, fileChurn });
+    }
+  });
+
+  if (candidateRows.length > 0) {
+    tx();
+  }
+  setSyncState(db, migrationKey, `done:${Date.now()}`);
+}
+
+function deriveActiveTimeFromEvents(events: Event[]): number {
+  if (events.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < events.length; i += 1) {
+    const delta = events[i]!.timestamp - events[i - 1]!.timestamp;
+    if (delta > 0 && delta <= 5 * 60_000) {
+      total += delta;
+    }
+  }
+  return total;
+}
+
+function deriveFileChurnFromEvents(events: Event[]): number {
+  let churn = 0;
+  for (const event of events) {
+    if (event.type === 'file_save') {
+      churn += 1;
+    } else if (event.type === 'file_create' || event.type === 'file_delete') {
+      churn += 3;
+    } else if (event.type === 'git_staged_diff') {
+      const insertions = Number(event.payload['insertions'] ?? 0);
+      const deletions = Number(event.payload['deletions'] ?? 0);
+      churn += Math.max(0, insertions + deletions);
+    }
+  }
+  return churn;
 }

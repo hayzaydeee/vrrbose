@@ -5,6 +5,7 @@ import { classifyQuery } from '../../agent/classifier.js';
 import { assembleContext } from '../../agent/context-assembler.js';
 import { buildPrompt } from '../../agent/prompt-builder.js';
 import { formatResponse } from '../../agent/response-formatter.js';
+import { generateDocument, formatGeneratedDocumentForSurface } from '../../agent/document-generator.js';
 import Anthropic from '@anthropic-ai/sdk';
 
 const MODEL_REQUEST_TIMEOUT_MS = 45_000;
@@ -14,6 +15,13 @@ class MissingProviderConfigError extends Error {
   constructor() {
     super('ANTHROPIC_API_KEY is not configured');
     this.name = 'MissingProviderConfigError';
+  }
+}
+
+class ProviderExhaustedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProviderExhaustedError';
   }
 }
 
@@ -53,6 +61,58 @@ function asErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+async function runWithProviderFallback(prompt: { system: string; user: string }): Promise<{ text: string; provider: 'anthropic' | 'ollama' }> {
+  const anthropicKey = process.env['ANTHROPIC_API_KEY'];
+  const ollamaModel = process.env['OLLAMA_MODEL'] ?? 'llama3';
+  const ollamaBaseUrl = process.env['OLLAMA_BASE_URL'] ?? 'http://127.0.0.1:11434';
+
+  if (anthropicKey) {
+    try {
+      const message = await withTimeout(
+        getClient().messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4096,
+          system: prompt.system,
+          messages: [{ role: 'user', content: prompt.user }],
+        }),
+        MODEL_REQUEST_TIMEOUT_MS,
+        'Agent request timed out',
+      );
+
+      const text = message.content[0]?.type === 'text' ? message.content[0].text : '';
+      return { text, provider: 'anthropic' };
+    } catch (err) {
+      console.warn('[agent] anthropic failed; attempting ollama fallback:', asErrorMessage(err));
+    }
+  }
+
+  try {
+    const response = await withTimeout(
+      fetch(`${ollamaBaseUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: ollamaModel,
+          prompt: `${prompt.system}\n\n${prompt.user}`,
+          stream: false,
+        }),
+      }),
+      MODEL_REQUEST_TIMEOUT_MS,
+      'Ollama request timed out',
+    );
+
+    if (!response.ok) {
+      throw new Error(`Ollama HTTP ${response.status}`);
+    }
+
+    const payload = await response.json() as { response?: string };
+    const text = payload.response ?? '';
+    return { text, provider: 'ollama' };
+  } catch (err) {
+    throw new ProviderExhaustedError(`No available AI provider. Last error: ${asErrorMessage(err)}`);
+  }
+}
+
 export function agentRouter(db: Database.Database, defaultProjectId: string): Router {
   const router = Router();
 
@@ -67,32 +127,45 @@ export function agentRouter(db: Database.Database, defaultProjectId: string): Ro
     const projectId = (req.query['projectId'] as string) || defaultProjectId;
 
     try {
-      const apiClient = getClient();
       const queryType = classifyQuery(query);
+
+      if (queryType === 'DOCUMENT_GEN') {
+        const generated = generateDocument(db, projectId, query);
+        const answer = formatGeneratedDocumentForSurface(generated, format ?? 'cli');
+        res.json({
+          ok: true,
+          data: {
+            answer,
+            queryType,
+            sessionId,
+            metadata: {
+              documentType: generated.kind,
+              outputPath: generated.filePath,
+            },
+          },
+        });
+        return;
+      }
+
       const context = await assembleContext(db, projectId, queryType, sessionId);
       const prompt = buildPrompt(query, context, queryType);
 
-      const message = await withTimeout(
-        apiClient.messages.create({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 4096,
-          system: prompt.system,
-          messages: [{ role: 'user', content: prompt.user }],
-        }),
-        MODEL_REQUEST_TIMEOUT_MS,
-        'Agent request timed out'
-      );
-
-      const rawAnswer = message.content[0]?.type === 'text' ? message.content[0].text : '';
+      const providerResult = await runWithProviderFallback(prompt);
+      const rawAnswer = providerResult.text;
       const answer = formatResponse(rawAnswer, queryType, format ?? 'cli');
 
       res.json({
         ok: true,
-        data: { answer, queryType, sessionId },
+        data: {
+          answer,
+          queryType,
+          sessionId,
+          metadata: { provider: providerResult.provider },
+        },
       });
     } catch (err) {
       console.error('[agent] error:', err);
-      if (err instanceof MissingProviderConfigError) {
+      if (err instanceof MissingProviderConfigError || err instanceof ProviderExhaustedError) {
         res.status(503).json({ ok: false, error: err.message });
         return;
       }

@@ -9,10 +9,12 @@ import {
   insertProject,
   insertSession,
   insertEvent,
+  insertCapsule,
   getPendingSyncEvents,
   getPendingSyncSessions,
+  getPendingSyncCapsules,
 } from '../db/client.js';
-import type { Event, Session } from '@vrrbose/shared';
+import type { Event, Session, Capsule } from '@vrrbose/shared';
 
 const HOME_DIR = join(tmpdir(), `vrrbose-sync-gate-${Date.now()}`);
 const VRRBOSE_DIR = join(HOME_DIR, '.vrrbose');
@@ -51,6 +53,7 @@ async function main(): Promise<void> {
 
   const receivedEventBatches: string[][] = [];
   const receivedSessionBatches: string[][] = [];
+  const receivedCapsuleBatches: string[][] = [];
   let failFirstEventsRequest = true;
   let requireGoodToken = false;
   const goodToken = 'good-token';
@@ -65,7 +68,7 @@ async function main(): Promise<void> {
     req.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
     req.on('end', () => {
       const body = Buffer.concat(chunks).toString('utf8');
-      const parsed = JSON.parse(body) as { events?: Event[]; sessions?: Session[] };
+      const parsed = JSON.parse(body) as { events?: Event[]; sessions?: Session[]; capsules?: Capsule[] };
       const authHeader = req.headers['authorization'];
       const token = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : '';
 
@@ -89,6 +92,13 @@ async function main(): Promise<void> {
       if (req.url === '/sync/sessions') {
         const ids = (parsed.sessions ?? []).map((s) => s.id);
         receivedSessionBatches.push(ids);
+        res.writeHead(200, { 'Content-Type': 'application/json' }).end('{"ok":true}');
+        return;
+      }
+
+      if (req.url === '/sync/capsules') {
+        const ids = (parsed.capsules ?? []).map((c: Capsule) => c.id);
+        receivedCapsuleBatches.push(ids);
         res.writeHead(200, { 'Content-Type': 'application/json' }).end('{"ok":true}');
         return;
       }
@@ -151,6 +161,24 @@ async function main(): Promise<void> {
     return { sessionId, eventIds, createdAt };
   }
 
+  function insertPendingCapsule(sessionId: string): Capsule {
+    const capsule: Capsule = {
+      id: randomUUID(),
+      projectId,
+      sessionId,
+      title: 'Sync Gate Capsule',
+      summary: 'capsule sync verification',
+      keyFiles: ['src/index.ts'],
+      decisions: [],
+      openQuestions: [],
+      createdAt: Date.now(),
+      trigger: 'manual',
+      syncStatus: 'pending',
+    };
+    insertCapsule(db, capsule);
+    return capsule;
+  }
+
   function readSyncStateNumber(key: string): number {
     const row = db.prepare('SELECT value FROM sync_state WHERE key = ?').get(key) as { value?: string } | undefined;
     const parsed = Number(row?.value ?? '0');
@@ -169,6 +197,7 @@ async function main(): Promise<void> {
   });
 
   const scenario1 = insertPendingSessionWithEvents(120);
+  const scenario1Capsule = insertPendingCapsule(scenario1.sessionId);
 
   const { startSyncWorker } = await import('../sync/worker.js');
   let stopSyncWorker = startSyncWorker(db);
@@ -176,6 +205,7 @@ async function main(): Promise<void> {
   try {
     await waitUntil(() => getPendingSyncEvents(db, 1000).length === 0, SYNC_TIMEOUT_MS, 'all events synced');
     await waitUntil(() => getPendingSyncSessions(db, 1000).length === 0, SYNC_TIMEOUT_MS, 'all sessions synced');
+    await waitUntil(() => getPendingSyncCapsules(db, 1000).length === 0, SYNC_TIMEOUT_MS, 'all capsules synced');
 
     // Wait one extra interval to ensure no extra replay after successful sync.
     await sleep(BASE_INTERVAL_MS * 3);
@@ -208,6 +238,8 @@ async function main(): Promise<void> {
     console.log('sync-gate: PASS failure/recovery');
     console.log('sync-gate: PASS duplicate-write guard');
     console.log(`sync-gate: PASS lag-under-load (${lagMs}ms)`);
+    assert(receivedCapsuleBatches.some((batch) => batch.includes(scenario1Capsule.id)), 'Capsule payload was not synced');
+    console.log('sync-gate: PASS capsule-sync');
 
     // Exploratory-style check 1: restart worker with pending data and verify recovery.
     stopSyncWorker();

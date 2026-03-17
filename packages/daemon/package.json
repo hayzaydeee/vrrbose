@@ -12,6 +12,10 @@
     "verify:sync-gates": "tsx src/scripts/sync-gate-check.ts",
     "verify:capture-gates": "tsx src/scripts/capture-gate-check.ts",
     "verify:session-metrics-gates": "tsx src/scripts/session-metrics-gate-check.ts",
+    "verify:migration-gates": "tsx src/scripts/migration-gate-check.ts",
+    "verify:file-summary-gates": "tsx src/scripts/file-summary-gate-check.ts",
+    "verify:capsule-trigger-gates": "tsx src/scripts/capsule-trigger-gate-check.ts",
+    "verify:document-gen-gates": "tsx src/scripts/document-gen-gate-check.ts",
     "clean": "rimraf dist"
   },
   "dependencies": {

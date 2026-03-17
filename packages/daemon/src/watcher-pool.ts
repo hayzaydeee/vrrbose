@@ -9,7 +9,7 @@ import { TerminalWatcher } from './watchers/terminal.js';
 import { TestRunWatcher } from './watchers/test.js';
 import { AiPromptWatcher } from './watchers/ai-prompt.js';
 import { injectContext } from './agent/context-injector.js';
-import { insertProject, getProject, insertEvent, getEvents, insertCapsule } from './db/client.js';
+import { insertProject, getProject, insertEvent, getEvents, insertCapsule, upsertFileSummary } from './db/client.js';
 import { getConfigValue, loadMergedConfig } from './config/source.js';
 
 type WeeklyCapsuleDay = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'off';
@@ -107,6 +107,7 @@ export class WatcherPool {
       const sessionId = sessionManager.getCurrentSessionId();
       if (sessionId) {
         db.prepare('UPDATE events SET session_id = ? WHERE id = ?').run(sessionId, event.id);
+        this.updateFileSummaryCache(event, sessionId);
       }
       broadcast({ ...event, sessionId });
     };
@@ -371,6 +372,40 @@ export class WatcherPool {
     };
 
     insertCapsule(this.db, capsule);
+  }
+
+  private updateFileSummaryCache(event: Event, sessionId: string): void {
+    if (event.type === 'file_save' || event.type === 'file_create' || event.type === 'file_delete') {
+      const filePath = typeof event.payload['filePath'] === 'string' ? event.payload['filePath'] : null;
+      if (!filePath) return;
+
+      upsertFileSummary(this.db, {
+        projectId: event.projectId,
+        sessionId,
+        filePath,
+        linesAdded: event.type === 'file_delete' ? 0 : 1,
+        linesRemoved: event.type === 'file_delete' ? 1 : 0,
+        timestamp: event.timestamp,
+      });
+      return;
+    }
+
+    if (event.type === 'git_staged_diff') {
+      const fileStats = Array.isArray(event.payload['fileStats']) ? event.payload['fileStats'] as Array<Record<string, unknown>> : [];
+      for (const fileStat of fileStats) {
+        const filePath = typeof fileStat['file'] === 'string' ? fileStat['file'] : null;
+        if (!filePath) continue;
+
+        upsertFileSummary(this.db, {
+          projectId: event.projectId,
+          sessionId,
+          filePath,
+          linesAdded: Number(fileStat['insertions'] ?? 0),
+          linesRemoved: Number(fileStat['deletions'] ?? 0),
+          timestamp: event.timestamp,
+        });
+      }
+    }
   }
 
   private dayName(day: number): WeeklyCapsuleDay {

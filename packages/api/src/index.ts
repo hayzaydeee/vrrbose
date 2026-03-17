@@ -48,6 +48,24 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_cloud_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_cloud_sessions_ts   ON sessions(user_id, started_at);
+
+  CREATE TABLE IF NOT EXISTS capsules (
+    id              TEXT NOT NULL,
+    user_id         TEXT NOT NULL,
+    project_id      TEXT NOT NULL,
+    session_id      TEXT,
+    title           TEXT NOT NULL,
+    summary         TEXT NOT NULL DEFAULT '',
+    key_files       TEXT NOT NULL DEFAULT '[]',
+    decisions       TEXT NOT NULL DEFAULT '[]',
+    open_questions  TEXT NOT NULL DEFAULT '[]',
+    created_at      INTEGER NOT NULL,
+    trigger         TEXT NOT NULL DEFAULT 'manual',
+    PRIMARY KEY (id, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_cloud_capsules_user ON capsules(user_id);
+  CREATE INDEX IF NOT EXISTS idx_cloud_capsules_proj ON capsules(user_id, project_id);
+  CREATE INDEX IF NOT EXISTS idx_cloud_capsules_ts   ON capsules(user_id, created_at);
 `);
 
 // ---------------------------------------------------------------------------
@@ -221,6 +239,60 @@ app.get('/sync/sessions', requireAuth as express.RequestHandler, (req: AuthReque
     'SELECT * FROM sessions WHERE user_id = @userId ORDER BY started_at DESC LIMIT @limit OFFSET @offset'
   ).all({ userId: req.userId, limit, offset });
 
+  res.json({ ok: true, data: rows });
+});
+
+// ---------------------------------------------------------------------------
+// Sync: capsules
+// ---------------------------------------------------------------------------
+const insertCapsule = db.prepare(`
+  INSERT OR REPLACE INTO capsules
+    (id, user_id, project_id, session_id, title, summary, key_files, decisions, open_questions, created_at, trigger)
+  VALUES
+    (@id, @userId, @projectId, @sessionId, @title, @summary, @keyFiles, @decisions, @openQuestions, @createdAt, @trigger)
+`);
+
+app.post('/sync/capsules', requireAuth as express.RequestHandler, (req: AuthRequest, res) => {
+  const { capsules } = req.body as { capsules?: unknown[] };
+  if (!Array.isArray(capsules) || capsules.length === 0) { res.status(400).json({ error: 'capsules array required' }); return; }
+
+  const upsert = db.transaction((rows: unknown[]) => {
+    for (const c of rows) {
+      const capsule = c as Record<string, unknown>;
+      insertCapsule.run({
+        id: capsule['id'],
+        userId: req.userId,
+        projectId: capsule['projectId'],
+        sessionId: capsule['sessionId'] ?? null,
+        title: capsule['title'] ?? 'Capsule',
+        summary: capsule['summary'] ?? '',
+        keyFiles: typeof capsule['keyFiles'] === 'string' ? capsule['keyFiles'] : JSON.stringify(capsule['keyFiles'] ?? []),
+        decisions: typeof capsule['decisions'] === 'string' ? capsule['decisions'] : JSON.stringify(capsule['decisions'] ?? []),
+        openQuestions: typeof capsule['openQuestions'] === 'string' ? capsule['openQuestions'] : JSON.stringify(capsule['openQuestions'] ?? []),
+        createdAt: capsule['createdAt'] ?? Date.now(),
+        trigger: capsule['trigger'] ?? 'manual',
+      });
+    }
+  });
+
+  upsert(capsules);
+  res.json({ ok: true, synced: capsules.length });
+});
+
+app.get('/sync/capsules', requireAuth as express.RequestHandler, (req: AuthRequest, res) => {
+  const limit = Math.min(parseInt(req.query['limit'] as string ?? '20', 10), 100);
+  const offset = parseInt(req.query['offset'] as string ?? '0', 10);
+  const projectId = req.query['projectId'] as string | undefined;
+
+  let query = 'SELECT * FROM capsules WHERE user_id = @userId';
+  const params: Record<string, unknown> = { userId: req.userId };
+  if (projectId) {
+    query += ' AND project_id = @projectId';
+    params['projectId'] = projectId;
+  }
+  query += ' ORDER BY created_at DESC LIMIT @limit OFFSET @offset';
+
+  const rows = db.prepare(query).all({ ...params, limit, offset });
   res.json({ ok: true, data: rows });
 });
 

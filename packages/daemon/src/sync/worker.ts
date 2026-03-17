@@ -8,6 +8,8 @@ import {
   markEventsSynced,
   getPendingSyncSessions,
   markSessionsSynced,
+  getPendingSyncCapsules,
+  markCapsulesSynced,
   getSyncState,
   setSyncState,
 } from '../db/client.js';
@@ -154,6 +156,28 @@ async function flushSessions(db: Database.Database, token: string): Promise<void
   logSync('info', 'sessions flushed', { count: sessions.length });
 }
 
+async function flushCapsules(db: Database.Database, token: string): Promise<void> {
+  const capsules = getPendingSyncCapsules(db, SYNC_CONFIG.batchSize);
+  if (capsules.length === 0) return;
+
+  const res = await fetch(`${SYNC_CONFIG.apiUrl}/sync/capsules`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ capsules }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new SyncHttpError(`capsules sync failed ${res.status}: ${body}`, res.status);
+  }
+
+  markCapsulesSynced(db, capsules.map((c) => c.id));
+  logSync('info', 'capsules flushed', { count: capsules.length });
+}
+
 async function tick(db: Database.Database): Promise<void> {
   const now = Date.now();
   const state = loadSyncState(db);
@@ -190,6 +214,7 @@ async function tick(db: Database.Database): Promise<void> {
   try {
     await flushEvents(db, token);
     await flushSessions(db, token);
+    await flushCapsules(db, token);
 
     incrementStateCounter(db, SYNC_STATE_KEYS.totalSuccessfulFlushes);
     setSyncState(db, SYNC_STATE_KEYS.lastSuccessAt, String(Date.now()));
