@@ -94,7 +94,8 @@ export interface DecisionEntry {
 export const api = {
   status: () => get<StatusResponse>('/api/status'),
   projects: () => get<ProjectStatus[]>('/api/projects'),
-  capsules: () => get<Capsule[]>('/api/capsules').catch(() => [] as Capsule[]),
+  capsules: (limit = 20, offset = 0, projectId?: string) =>
+    get<Capsule[]>(`/api/capsules?limit=${limit}&offset=${offset}${projectId ? `&projectId=${encodeURIComponent(projectId)}` : ''}`).catch(() => [] as Capsule[]),
   capsule: (id: string) => get<CapsuleDetail>(`/api/capsules/${encodeURIComponent(id)}`),
   documents: () => get<GeneratedDocument[]>('/api/documents').catch(() => [] as GeneratedDocument[]),
   document: (name: string) => get<{ name: string; content: string }>(`/api/documents/${encodeURIComponent(name)}`),
@@ -125,8 +126,8 @@ export const api = {
     get<ReadmeDraft>(`/api/readme${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''}`),
   applyReadmeDraft: (projectId?: string) =>
     post<{ readmePath: string; changed: boolean }>('/api/readme/apply', projectId ? { projectId } : {}),
-  decisions: (projectId?: string, limit = 100) =>
-    get<DecisionEntry[]>(`/api/decisions?limit=${limit}${projectId ? `&projectId=${encodeURIComponent(projectId)}` : ''}`),
+  decisions: (projectId?: string, limit = 100, offset = 0, trigger?: DecisionEntry['trigger']) =>
+    get<DecisionEntry[]>(`/api/decisions?limit=${limit}&offset=${offset}${projectId ? `&projectId=${encodeURIComponent(projectId)}` : ''}${trigger ? `&trigger=${encodeURIComponent(trigger)}` : ''}`),
   askStream: (
     query: string,
     projectId: string | undefined,

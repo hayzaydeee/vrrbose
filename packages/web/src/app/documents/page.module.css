@@ -4,6 +4,16 @@
 .heading { font-size: var(--text-xl); font-weight: 600; }
 .sub { color: var(--color-text-muted); font-size: var(--text-sm); margin-top: var(--space-2); }
 .generateRow { margin-top: var(--space-4); display: flex; gap: var(--space-2); align-items: center; }
+.searchRow { margin-top: var(--space-3); }
+.searchInput {
+  width: min(520px, 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+}
 .shareRow { margin-top: var(--space-3); display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
 .shareLabel {
   display: flex;
@@ -89,6 +99,22 @@
 .itemPreview { font-size: var(--text-xs); color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .viewer { border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); padding: var(--space-4); min-height: 70vh; }
 .content { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: var(--font-code); font-size: var(--text-sm); line-height: 1.5; }
+
+.moreWrap {
+  margin-top: var(--space-4);
+  display: flex;
+  justify-content: center;
+}
+
+.moreBtn {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
 @media (max-width: 980px) {
   .grid { grid-template-columns: 1fr; }
   .viewer { min-height: 40vh; }

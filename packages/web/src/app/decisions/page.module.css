@@ -12,6 +12,22 @@
 .heading { margin: 0 0 var(--space-2) 0; font-size: var(--text-xl); }
 .subhead { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
 
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.search {
+  min-width: 220px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+}
+
 .filter {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -71,9 +87,40 @@
   color: var(--color-text-muted);
 }
 
+.moreWrap {
+  margin-top: var(--space-4);
+  display: flex;
+  justify-content: center;
+}
+
+.moreBtn {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.moreBtn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
 @media (max-width: 900px) {
   .header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .controls {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search {
+    min-width: 0;
   }
 }

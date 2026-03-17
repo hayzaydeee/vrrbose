@@ -1,14 +1,18 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { GlobalNav } from '../../components/GlobalNav';
 import { api, type GeneratedDocument } from '../../lib/api';
 import styles from './page.module.css';
+
+const PAGE_SIZE = 20;
 
 export default function DocumentsPage() {
   const [docs, setDocs] = useState<GeneratedDocument[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [prompt, setPrompt] = useState('generate weekly digest');
+  const [query, setQuery] = useState('');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [shareMinutes, setShareMinutes] = useState(60);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareExpiresAt, setShareExpiresAt] = useState<number | null>(null);
@@ -83,6 +87,19 @@ export default function DocumentsPage() {
     navigator.clipboard.writeText(shareUrl).catch(() => {});
   };
 
+  const filteredDocs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return docs;
+    return docs.filter((d) => `${d.name} ${d.preview.join(' ')}`.toLowerCase().includes(q));
+  }, [docs, query]);
+
+  const visibleDocs = filteredDocs.slice(0, visibleCount);
+  const canLoadMore = visibleCount < filteredDocs.length;
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [query]);
+
   return (
     <div className={styles.layout}>
       <GlobalNav />
@@ -96,15 +113,26 @@ export default function DocumentsPage() {
               onChange={(e) => setPrompt(e.target.value)}
               className={styles.input}
               placeholder="generate weekly digest"
+              aria-label="Document generation prompt"
             />
-            <button className={styles.button} onClick={onGenerate} disabled={generating}>
+            <button className={styles.button} onClick={onGenerate} disabled={generating} aria-label="Generate document">
               {generating ? 'Generating...' : 'Generate'}
             </button>
             {selected && (
-              <a className={styles.exportLink} href={api.documentDownloadUrl(selected)}>
+              <a className={styles.exportLink} href={api.documentDownloadUrl(selected)} aria-label="Export selected document">
                 Export
               </a>
             )}
+          </div>
+
+          <div className={styles.searchRow}>
+            <input
+              className={styles.searchInput}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search documents..."
+              aria-label="Search documents"
+            />
           </div>
 
           <div className={styles.shareRow}>
@@ -114,6 +142,7 @@ export default function DocumentsPage() {
                 className={styles.shareSelect}
                 value={shareMinutes}
                 onChange={(e) => setShareMinutes(Number.parseInt(e.target.value, 10))}
+                aria-label="Share link expiry"
               >
                 <option value={15}>15 min</option>
                 <option value={60}>1 hour</option>
@@ -122,11 +151,11 @@ export default function DocumentsPage() {
                 <option value={10080}>7 days</option>
               </select>
             </label>
-            <button className={styles.shareButton} onClick={onShare} disabled={!selected || sharing}>
+            <button className={styles.shareButton} onClick={onShare} disabled={!selected || sharing} aria-label="Create expiring share link">
               {sharing ? 'Creating...' : 'Create share link'}
             </button>
             {shareUrl && (
-              <button className={styles.copyButton} onClick={onCopyShare}>
+              <button className={styles.copyButton} onClick={onCopyShare} aria-label="Copy share link">
                 Copy link
               </button>
             )}
@@ -152,11 +181,13 @@ export default function DocumentsPage() {
         {!loading && docs.length > 0 && (
           <div className={styles.grid}>
             <aside className={styles.list}>
-              {docs.map((doc) => (
+              {visibleDocs.map((doc) => (
                 <button
                   key={doc.name}
                   className={`${styles.item} ${selected === doc.name ? styles.itemActive : ''}`}
                   onClick={() => setSelected(doc.name)}
+                  aria-pressed={selected === doc.name}
+                  aria-label={`Preview document ${doc.name}`}
                 >
                   <div className={styles.itemName}>{doc.name}</div>
                   <div className={styles.itemMeta}>{new Date(doc.updatedAt).toLocaleString()}</div>
@@ -169,6 +200,14 @@ export default function DocumentsPage() {
             <section className={styles.viewer}>
               <pre className={styles.content}>{content || 'Select a document to preview.'}</pre>
             </section>
+          </div>
+        )}
+
+        {!loading && !error && canLoadMore && (
+          <div className={styles.moreWrap}>
+            <button className={styles.moreBtn} onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}>
+              Load more
+            </button>
           </div>
         )}
       </main>

@@ -4,6 +4,8 @@ import { GlobalNav } from '../../components/GlobalNav';
 import { api, type Capsule } from '../../lib/api';
 import styles from './page.module.css';
 
+const PAGE_SIZE = 24;
+
 function capsuleTypeLabel(type: Capsule['type']): string {
   switch (type) {
     case 'merge':  return 'Merge';
@@ -21,7 +23,12 @@ function CapsuleCard({ capsule, active, onSelect }: { capsule: Capsule; active: 
   const type = capsule.trigger ?? capsule.type ?? 'manual';
 
   return (
-    <button className={`${styles.card} ${active ? styles.cardActive : ''}`} onClick={() => onSelect(capsule.id)}>
+    <button
+      className={`${styles.card} ${active ? styles.cardActive : ''}`}
+      onClick={() => onSelect(capsule.id)}
+      aria-pressed={active}
+      aria-label={`Open capsule ${capsule.title}`}
+    >
       <div className={styles.cardTop}>
         <span className={`${styles.typeTag} ${styles[`type_${type}`]}`}>
           {capsuleTypeLabel(type)}
@@ -42,11 +49,16 @@ function CapsuleCard({ capsule, active, onSelect }: { capsule: Capsule; active: 
 export default function CapsulesPage() {
   const [capsules, setCapsules] = useState<Capsule[]>([]);
   const [selected, setSelected] = useState<Capsule | null>(null);
+  const [query, setQuery] = useState('');
+  const [triggerFilter, setTriggerFilter] = useState<'all' | 'manual' | 'merge' | 'tag' | 'weekly'>('all');
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.capsules().then(cs => {
+    api.capsules(PAGE_SIZE, 0).then(cs => {
       setCapsules(cs);
+      setHasMore(cs.length === PAGE_SIZE);
       if (cs.length > 0) {
         api.capsule(cs[0].id)
           .then((detail) => setSelected(detail.capsule))
@@ -56,13 +68,33 @@ export default function CapsulesPage() {
     });
   }, []);
 
+  async function loadMore() {
+    if (!hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const next = await api.capsules(PAGE_SIZE, capsules.length);
+      setCapsules((prev) => [...prev, ...next]);
+      setHasMore(next.length === PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   async function selectCapsule(id: string) {
     const detail = await api.capsule(id);
     setSelected(detail.capsule);
   }
 
-  const selectedIndex = selected ? capsules.findIndex((c) => c.id === selected.id) : -1;
-  const previous = selectedIndex >= 0 ? capsules[selectedIndex + 1] : null;
+  const q = query.trim().toLowerCase();
+  const filteredCapsules = capsules.filter((c) => {
+    const type = c.trigger ?? c.type ?? 'manual';
+    if (triggerFilter !== 'all' && triggerFilter !== type) return false;
+    if (!q) return true;
+    return `${c.title} ${c.summary ?? ''}`.toLowerCase().includes(q);
+  });
+
+  const selectedIndex = selected ? filteredCapsules.findIndex((c) => c.id === selected.id) : -1;
+  const previous = selectedIndex >= 0 ? filteredCapsules[selectedIndex + 1] : null;
   const selectedDecisions = selected?.decisions ?? [];
   const selectedQuestions = selected?.openQuestions ?? [];
   const selectedFiles = selected?.keyFiles ?? [];
@@ -77,6 +109,28 @@ export default function CapsulesPage() {
         <p className={styles.subtitle}>
           Time capsules snapshot your project&apos;s architecture, decisions, and open TODOs at key moments.
         </p>
+
+        <div className={styles.controls}>
+          <input
+            className={styles.search}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search capsules..."
+            aria-label="Search capsules"
+          />
+          <select
+            className={styles.filter}
+            value={triggerFilter}
+            onChange={(e) => setTriggerFilter(e.target.value as 'all' | 'manual' | 'merge' | 'tag' | 'weekly')}
+            aria-label="Filter capsules by trigger"
+          >
+            <option value="all">All triggers</option>
+            <option value="manual">Manual</option>
+            <option value="merge">Merge</option>
+            <option value="tag">Tag</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
 
         {loading && <p className={styles.muted}>Loading…</p>}
 
@@ -110,10 +164,17 @@ export default function CapsulesPage() {
           </div>
         )}
 
-        {!loading && capsules.length > 0 && (
+        {!loading && capsules.length > 0 && filteredCapsules.length === 0 && (
+          <div className={styles.empty}>
+            <h2 className={styles.emptyTitle}>No capsules match this filter</h2>
+            <p className={styles.emptyBody}>Adjust your trigger filter or search text to see more results.</p>
+          </div>
+        )}
+
+        {!loading && filteredCapsules.length > 0 && (
           <div className={styles.content}>
             <div className={styles.grid}>
-              {capsules.map(c => (
+              {filteredCapsules.map(c => (
                 <CapsuleCard
                   key={c.id}
                   capsule={c}
@@ -160,6 +221,14 @@ export default function CapsulesPage() {
                 </section>
               </aside>
             )}
+          </div>
+        )}
+
+        {!loading && hasMore && (
+          <div className={styles.moreWrap}>
+            <button className={styles.moreBtn} onClick={() => loadMore()} disabled={loadingMore}>
+              {loadingMore ? 'Loading...' : 'Load more'}
+            </button>
           </div>
         )}
       </main>

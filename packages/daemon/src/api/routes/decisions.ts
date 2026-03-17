@@ -21,10 +21,18 @@ export function decisionsRouter(db: Database.Database, defaultProjectId: string)
     const limitRaw = typeof req.query['limit'] === 'string'
       ? Number.parseInt(req.query['limit'], 10)
       : 100;
+    const offsetRaw = typeof req.query['offset'] === 'string'
+      ? Number.parseInt(req.query['offset'], 10)
+      : 0;
+    const trigger = typeof req.query['trigger'] === 'string'
+      ? req.query['trigger']
+      : undefined;
     const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(limitRaw, 500)) : 100;
+    const offset = Number.isFinite(offsetRaw) ? Math.max(0, offsetRaw) : 0;
 
-    const capsules = getCapsules(db, projectId, { limit });
+    const capsules = getCapsules(db, projectId, { limit: Math.min(500, limit + offset), offset: 0 });
     const entries = capsules.flatMap((capsule) => {
+      if (trigger && capsule.trigger !== trigger) return [];
       if (!Array.isArray(capsule.decisions) || capsule.decisions.length === 0) return [];
       return capsule.decisions.map((decision, idx) => ({
         id: `${capsule.id}:${idx}`,
@@ -36,7 +44,7 @@ export function decisionsRouter(db: Database.Database, defaultProjectId: string)
       } satisfies DecisionEntry));
     });
 
-    res.json({ ok: true, data: entries });
+    res.json({ ok: true, data: entries.slice(offset, offset + limit) });
   });
 
   return router;
