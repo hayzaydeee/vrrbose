@@ -12,6 +12,7 @@ const NAV = [
   { href: '/sessions',  label: 'Sessions' },
   { href: '/agent',     label: 'Ask' },
   { href: '/capsules',  label: 'Capsules' },
+  { href: '/documents', label: 'Documents' },
   { href: '/metrics',   label: 'Metrics' },
   { href: '/settings',  label: 'Settings' },
 ];

@@ -16,6 +16,9 @@
     "verify:file-summary-gates": "tsx src/scripts/file-summary-gate-check.ts",
     "verify:capsule-trigger-gates": "tsx src/scripts/capsule-trigger-gate-check.ts",
     "verify:document-gen-gates": "tsx src/scripts/document-gen-gate-check.ts",
+    "verify:provider-fallback-gates": "tsx src/scripts/provider-fallback-gate-check.ts",
+    "verify:response-contract-gates": "tsx src/scripts/response-contract-gate-check.ts",
+    "verify:web-contract-gates": "tsx src/scripts/web-contract-gate-check.ts",
     "clean": "rimraf dist"
   },
   "dependencies": {

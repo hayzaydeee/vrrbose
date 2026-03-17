@@ -6,6 +6,7 @@ import { assembleContext } from '../../agent/context-assembler.js';
 import { buildPrompt } from '../../agent/prompt-builder.js';
 import { formatResponse } from '../../agent/response-formatter.js';
 import { generateDocument, formatGeneratedDocumentForSurface } from '../../agent/document-generator.js';
+import { buildWebContractPayload } from '../../agent/web-contract.js';
 import Anthropic from '@anthropic-ai/sdk';
 
 const MODEL_REQUEST_TIMEOUT_MS = 45_000;
@@ -61,7 +62,7 @@ function asErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-async function runWithProviderFallback(prompt: { system: string; user: string }): Promise<{ text: string; provider: 'anthropic' | 'ollama' }> {
+export async function runWithProviderFallback(prompt: { system: string; user: string }): Promise<{ text: string; provider: 'anthropic' | 'ollama' }> {
   const anthropicKey = process.env['ANTHROPIC_API_KEY'];
   const ollamaModel = process.env['OLLAMA_MODEL'] ?? 'llama3';
   const ollamaBaseUrl = process.env['OLLAMA_BASE_URL'] ?? 'http://127.0.0.1:11434';
@@ -129,6 +130,20 @@ export function agentRouter(db: Database.Database, defaultProjectId: string): Ro
     try {
       const queryType = classifyQuery(query);
 
+      if (queryType === 'OUT_OF_SCOPE') {
+        const answer = formatResponse('That request is outside Vrrbose project-history scope.', queryType, format ?? 'cli');
+        res.json({
+          ok: true,
+          data: {
+            answer,
+            queryType,
+            sessionId,
+            metadata: format === 'web' ? { web: buildWebContractPayload(answer, queryType) } : undefined,
+          },
+        });
+        return;
+      }
+
       if (queryType === 'DOCUMENT_GEN') {
         const generated = generateDocument(db, projectId, query);
         const answer = formatGeneratedDocumentForSurface(generated, format ?? 'cli');
@@ -141,6 +156,7 @@ export function agentRouter(db: Database.Database, defaultProjectId: string): Ro
             metadata: {
               documentType: generated.kind,
               outputPath: generated.filePath,
+              ...(format === 'web' ? { web: buildWebContractPayload(answer, queryType) } : {}),
             },
           },
         });
@@ -160,7 +176,10 @@ export function agentRouter(db: Database.Database, defaultProjectId: string): Ro
           answer,
           queryType,
           sessionId,
-          metadata: { provider: providerResult.provider },
+          metadata: {
+            provider: providerResult.provider,
+            ...(format === 'web' ? { web: buildWebContractPayload(answer, queryType) } : {}),
+          },
         },
       });
     } catch (err) {

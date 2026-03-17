@@ -40,10 +40,19 @@ export interface Capsule {
   fileCount?: number;
 }
 
+export interface GeneratedDocument {
+  name: string;
+  size: number;
+  updatedAt: number;
+  preview: string[];
+}
+
 export const api = {
   status: () => get<StatusResponse>('/api/status'),
   projects: () => get<ProjectStatus[]>('/api/projects'),
   capsules: () => get<Capsule[]>('/api/capsules').catch(() => [] as Capsule[]),
+  documents: () => get<GeneratedDocument[]>('/api/documents').catch(() => [] as GeneratedDocument[]),
+  document: (name: string) => get<{ name: string; content: string }>(`/api/documents/${encodeURIComponent(name)}`),
   sessions: (limit = 20) => get<Session[]>(`/api/sessions?limit=${limit}`),
   session: (id: string) => get<{ session: Session; events: Event[] }>(`/api/sessions/${id}`),
   events: (params?: { sessionId?: string; type?: string; limit?: number; projectId?: string }) => {
@@ -56,6 +65,9 @@ export const api = {
   },
   ask: (query: string, sessionId?: string, projectId?: string) =>
     post<AgentResponse>('/api/agent' + (projectId ? `?projectId=${projectId}` : ''), { query, sessionId, format: 'web' }),
+  generateDocument: (query: string, sessionId?: string, projectId?: string) =>
+    post<AgentResponse>('/api/agent' + (projectId ? `?projectId=${projectId}` : ''), { query, sessionId, format: 'web' }),
+  documentDownloadUrl: (name: string) => `${BASE}/api/documents/${encodeURIComponent(name)}/download`,
   askStream: (
     query: string,
     projectId: string | undefined,
