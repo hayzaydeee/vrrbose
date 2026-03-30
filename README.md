@@ -48,6 +48,7 @@ Add `--json` to any command for machine-readable output.
 
 ---
 
+
 ## How it works
 
 Vrrbose runs a lightweight daemon process that watches your project for git and filesystem events. Events are buffered locally in SQLite, grouped into sessions, and synced to the cloud. The agent endpoint uses your session history as context to answer questions about your work.
