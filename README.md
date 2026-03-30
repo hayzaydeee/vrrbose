@@ -1,5 +1,9 @@
 # vrrbose
 
+> **This package is deprecated.** A new release is coming May 1, 2026.
+
+---
+
 **An agent that watches your code while you build.**
 
 Vrrbose runs quietly in the background, capturing git commits, file activity, and coding sessions. Ask it anything about your work history in plain English — what you built, when, and why.
@@ -13,29 +17,6 @@ npm install -g vrrbose
 ```
 
 Node.js 18+ required.
-
----
-
-## Quick start
-
-```bash
-# 1. Create a free account
-vrrbose login
-
-# 2. Start tracking a project
-cd /path/to/your/project
-vrrbose init
-
-# 3. Ask questions about your work
-vrrbose ask "What did I work on yesterday?"
-vrrbose ask "Summarize this week's sessions"
-vrrbose ask "What changed in the auth module last Tuesday?"
-
-# 4. Open the dashboard
-vrrbose ui
-```
-
-That's it. No API keys. No infrastructure to set up.
 
 ---
 
@@ -64,17 +45,6 @@ vrrbose ui                 Open the web dashboard
 ```
 
 Add `--json` to any command for machine-readable output.
-
----
-
-## Dashboard
-
-`vrrbose ui` opens the dashboard — locally at `http://localhost:7331/ui/` or at [app.vrrbose.dev](https://app.vrrbose.dev) when signed in — with:
-
-- Live session view with activity scoring
-- Commit and file event timeline
-- Session history and metrics
-- Agent chat for querying your history
 
 ---
 
@@ -107,37 +77,6 @@ your project
 - Only events from explicitly initialized projects are tracked.
 - You can stop tracking a project at any time with `vrrbose init --remove`.
 - Local data lives at `~/.vrrbose/` and can be deleted at any time.
-
----
-
-## Troubleshooting
-
-**Daemon not running:**
-```bash
-vrrbose start
-vrrbose status
-```
-
-**Inspect logs:**
-```bash
-# macOS / Linux
-tail -f ~/.vrrbose/daemon.log
-
-# Windows PowerShell
-Get-Content "$HOME/.vrrbose/daemon.log" -Wait
-```
-
----
-
-## Links
-
-- Website: [vrrbose.dev](https://vrrbose.dev)
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for monorepo setup and development workflow.
 
 ---
 

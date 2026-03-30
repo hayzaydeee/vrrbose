@@ -21,6 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </head>
         <body>
           <a className="skip-link" href="#main-content">Skip to main content</a>
+          <div style={{ background: '#1a1a1a', borderBottom: '1px solid #333', padding: '10px 16px', textAlign: 'center', fontSize: '13px', color: '#999' }}>
+            <strong style={{ color: '#fff' }}>This package is deprecated.</strong> A new release is coming <strong style={{ color: '#fff' }}>May 1, 2026</strong>.
+          </div>
           {children}
         </body>
       </html>
