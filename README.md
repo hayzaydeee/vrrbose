@@ -69,7 +69,7 @@ Add `--json` to any command for machine-readable output.
 
 ## Dashboard
 
-`vrrbose ui` opens the dashboard — locally at `http://localhost:7331/ui/` or at [app.vrrbose.dev](https://app.vrrbose.dev) when signed in — with:
+`vrrbose ui` opens the dashboard — locally at `http://localhost:7331/ui/` or at [app.vrrbose.dev](https://vrrbose.dev) when signed in — with:
 
 - Live session view with activity scoring
 - Commit and file event timeline
