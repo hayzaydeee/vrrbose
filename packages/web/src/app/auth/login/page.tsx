@@ -47,7 +47,7 @@ export default function LoginPage() {
             <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 500, color: '#FFECD1', fontFamily: 'Goudy Bookletter 1911, Georgia, serif' }}>This package is deprecated</h2>
           </div>
           <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6', color: 'rgba(255,236,209,0.7)' }}>
-            A new release is coming <strong style={{ color: '#FFECD1' }}>May 1, 2026</strong>. The current version will remain accessible but will no longer receive updates.
+            A new release is coming <strong style={{ color: '#FFECD1' }}>June 10, 2026</strong>. The current version will remain accessible but will no longer receive updates.
           </p>
           <button
             onClick={() => setAcknowledged(true)}

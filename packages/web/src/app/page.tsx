@@ -363,7 +363,7 @@ export default function LandingPage() {
               Install Vrrbose
             </a>
             <a
-              href="https://github.com/vrrbose/vrrbose"
+              href="https://github.com/hayzaydeee/vrrbose"
               className={styles.btnGhost}
               target="_blank"
               rel="noopener noreferrer"
@@ -385,7 +385,7 @@ export default function LandingPage() {
           <ul className={styles.footerLinks}>
             <li><a href="#">Docs</a></li>
             <li><a href="#">Privacy</a></li>
-            <li><a href="https://github.com/vrrbose/vrrbose">GitHub</a></li>
+            <li><a href="https://github.com/hayzaydeee/vrrbose">GitHub</a></li>
             <li><a href="#">X</a></li>
           </ul>
         </div>

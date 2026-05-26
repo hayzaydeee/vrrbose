@@ -1,6 +1,6 @@
 # vrrbose
 
-> **This package is deprecated.** A new release is coming May 1, 2026.
+> **This package is deprecated.** A new release is coming June 10, 2026.
 
 ---
 
